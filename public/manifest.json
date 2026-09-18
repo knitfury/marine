@@ -1,0 +1,10 @@
+{
+  "name": "MarineLink",
+  "short_name": "MarineLink",
+  "description": "Marine Travelift dealer, customer, equipment and service-management hub.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#0a1628",
+  "theme_color": "#0a1628",
+  "icons": []
+}
