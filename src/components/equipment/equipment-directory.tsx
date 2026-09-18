@@ -7,12 +7,12 @@ import {
   PageHeader,
   SearchInput,
   FilterBar,
-  EntityCard,
   EmptyState,
   ErrorState,
   LoadingSkeleton,
   type FilterDef,
 } from "@/components/shared";
+import { EquipmentCatalogueCard } from "@/components/equipment/equipment-catalogue-card";
 import {
   getCurrentMockUser,
   getCustomers,
@@ -22,7 +22,6 @@ import {
 } from "@/lib/mock-api";
 import { formatEquipmentStatus } from "@/lib/formatting/status";
 import { EQUIPMENT_STATUSES } from "@/lib/constants/status";
-import { entityHref } from "@/lib/routes";
 import { useRoleStore } from "@/stores/role-store";
 import type { Equipment, EquipmentStatus } from "@/types";
 
@@ -208,15 +207,7 @@ export function EquipmentDirectory() {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {equipment.map((eq) => (
-            <EntityCard
-              key={eq.id}
-              href={entityHref("equipment", eq.id)}
-              title={eq.name}
-              subtitle={`${eq.equipmentType} · ${eq.model}`}
-              avatarName={eq.name}
-              status={{ kind: "equipment", status: eq.currentStatus }}
-              stats={buildStats(eq)}
-            />
+            <EquipmentCatalogueCard key={eq.id} equipment={eq} stats={buildStats(eq)} />
           ))}
         </div>
       )}

@@ -20,6 +20,8 @@ export interface EntityCardProps {
   title: string;
   subtitle?: string;
   avatarName?: string;
+  /** Optional photo shown in the avatar circle; falls back to initials if missing or if it fails to load. */
+  imageUrl?: string;
   status?: StatusBadgeProps;
   stats?: EntityCardStat[];
   className?: string;
@@ -31,7 +33,16 @@ export interface EntityCardProps {
  * one of the thin per-entity wrappers below for a call site that just has a
  * raw `Dealer`/`Customer`/`Equipment`/`ServiceRequest` record in hand.
  */
-export function EntityCard({ href, title, subtitle, avatarName, status, stats, className }: EntityCardProps) {
+export function EntityCard({
+  href,
+  title,
+  subtitle,
+  avatarName,
+  imageUrl,
+  status,
+  stats,
+  className,
+}: EntityCardProps) {
   return (
     <Link
       href={href}
@@ -41,7 +52,9 @@ export function EntityCard({ href, title, subtitle, avatarName, status, stats, c
       )}
     >
       <Card className="flex items-center gap-4 p-4 transition-shadow hover:shadow-md sm:p-5">
-        {avatarName && <EntityAvatar name={avatarName} className="hidden sm:flex" />}
+        {avatarName && (
+          <EntityAvatar name={avatarName} imageUrl={imageUrl} className="hidden sm:flex" />
+        )}
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
@@ -108,6 +121,7 @@ export function EquipmentCard({ equipment }: { equipment: Equipment }) {
       title={equipment.name}
       subtitle={`${equipment.equipmentType} · ${equipment.model}`}
       avatarName={equipment.name}
+      imageUrl={equipment.imageUrl}
       status={{ kind: "equipment", status: equipment.currentStatus }}
       stats={[{ label: "Serial", value: equipment.serialNumber }]}
     />

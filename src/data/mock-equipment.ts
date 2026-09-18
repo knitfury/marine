@@ -1,4 +1,5 @@
 import type { Equipment } from "@/types";
+import { pickEquipmentImage } from "@/lib/constants/equipment-images";
 
 /**
  * Base equipment fixtures. Marine Travelift's real product line centers on
@@ -11,7 +12,7 @@ import type { Equipment } from "@/types";
  * mock-dealers.ts. eqp-018 is a dealer-owned demo/loaner unit with no
  * assigned customer, which is why `customerId` is optional on the type.
  */
-export const mockEquipment: Equipment[] = [
+const equipmentFixturesBase: Equipment[] = [
   {
     id: "eqp-001",
     name: "Harborview 75-Ton Travelift",
@@ -192,3 +193,9 @@ export const mockEquipment: Equipment[] = [
     dealerId: "dlr-001",
   },
 ];
+
+/** Adds a representative photo per record, varied by position for records sharing an equipment type. */
+export const mockEquipment: Equipment[] = equipmentFixturesBase.map((eq, index) => ({
+  ...eq,
+  imageUrl: pickEquipmentImage(eq.equipmentType, index),
+}));

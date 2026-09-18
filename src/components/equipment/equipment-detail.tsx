@@ -1,7 +1,9 @@
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { Wrench } from "@phosphor-icons/react";
 import { PageContainer } from "@/components/layout/page-container";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +37,7 @@ export interface EquipmentDetailProps {
 
 export function EquipmentDetail({ id }: EquipmentDetailProps) {
   const role = useRoleStore((state) => state.role);
+  const [imageFailed, setImageFailed] = React.useState(false);
 
   const userQuery = useQuery({
     queryKey: ["current-user", role],
@@ -112,6 +115,7 @@ export function EquipmentDetail({ id }: EquipmentDetailProps) {
   const showCustomer = !!customer && canViewCustomer(user, customer);
   const showDealer = !!dealer && canViewDealer(user, dealer);
   const serviceRequests = serviceRequestsQuery.data ?? [];
+  const showImage = Boolean(equipment.imageUrl) && !imageFailed;
 
   return (
     <PageContainer className="flex flex-col gap-6">
@@ -120,6 +124,20 @@ export function EquipmentDetail({ id }: EquipmentDetailProps) {
         subtitle={`${equipment.equipmentType} · ${equipment.model}`}
         badges={<StatusBadge kind="equipment" status={equipment.currentStatus} />}
       />
+
+      <div className="flex aspect-[16/7] w-full items-center justify-center overflow-hidden rounded-xl border border-border bg-muted">
+        {showImage ? (
+          // eslint-disable-next-line @next/next/no-img-element -- external mock-catalogue photo, no next/image domain config needed
+          <img
+            src={equipment.imageUrl}
+            alt={`${equipment.equipmentType} - ${equipment.model}`}
+            className="h-full w-full object-cover"
+            onError={() => setImageFailed(true)}
+          />
+        ) : (
+          <Wrench className="size-12 text-muted-foreground" aria-hidden="true" />
+        )}
+      </div>
 
       <DetailSection title="Identification">
         <KeyValueList

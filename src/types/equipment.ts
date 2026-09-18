@@ -9,4 +9,6 @@ export interface Equipment {
   currentStatus: EquipmentStatus;
   customerId?: string;
   dealerId?: string;
+  /** Representative photo for this equipment type. Falls back gracefully in the UI if it fails to load. */
+  imageUrl?: string;
 }

@@ -16,4 +16,5 @@ export const equipmentSchema = z.object({
   currentStatus: equipmentStatusSchema,
   customerId: z.string().optional(),
   dealerId: z.string().optional(),
+  imageUrl: z.string().optional(),
 });
