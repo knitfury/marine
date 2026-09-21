@@ -209,6 +209,54 @@ export function computeResolutionTimeTrend(
   };
 }
 
+export interface RevenueTrend {
+  totalThisPeriod: number;
+  totalPreviousPeriod: number;
+  deltaPct: number | null;
+  weeklySparkline: number[];
+}
+
+/**
+ * Estimated revenue (sum of `estimatedValue`) for requests that closed
+ * (resolved/closed) in each month-to-date window, bucketed by `updatedAt`
+ * (when they closed) - the same "closures this period" framing as
+ * computeResolutionTimeTrend/computeSlaComplianceTrend, and consistent with
+ * the dashboard's existing "Revenue" Overview KPI (also resolved/closed
+ * only - see getDashboardSummary in src/lib/mock-api/index.ts). Requests
+ * with no `estimatedValue` contribute 0.
+ */
+export function computeRevenueTrend(
+  requests: ServiceRequest[],
+  now: Date = new Date()
+): RevenueTrend {
+  const closed = requests.filter(isClosedRequest);
+  const { current, previous } = monthToDateWindow(now);
+
+  const totalThisPeriod = closed
+    .filter((r) => inWindow(r.updatedAt, current))
+    .reduce((sum, r) => sum + (r.estimatedValue ?? 0), 0);
+  const totalPreviousPeriod = closed
+    .filter((r) => inWindow(r.updatedAt, previous))
+    .reduce((sum, r) => sum + (r.estimatedValue ?? 0), 0);
+
+  const weekStarts = trailingWeekStarts(now, SPARKLINE_WEEKS);
+  const weekStartSet = new Set(weekStarts);
+  const weekTotals = new Map<number, number>();
+  for (const request of closed) {
+    const weekStart = startOfWeekUTC(new Date(request.updatedAt));
+    if (!weekStartSet.has(weekStart)) continue;
+    weekTotals.set(weekStart, (weekTotals.get(weekStart) ?? 0) + (request.estimatedValue ?? 0));
+  }
+  const weeklySparkline = weekStarts.map((ws) => weekTotals.get(ws) ?? 0);
+
+  return {
+    totalThisPeriod,
+    totalPreviousPeriod,
+    deltaPct: computeTrendPct(totalThisPeriod, totalPreviousPeriod),
+    weeklySparkline,
+  };
+}
+
 export interface SlaComplianceTrend {
   pctThisPeriod: number | null;
   pctPreviousPeriod: number | null;

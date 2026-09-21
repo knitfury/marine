@@ -40,6 +40,7 @@ import { CategoryBarList } from "@/components/dashboard/category-bar-list";
 import {
   computeOpenRequestsTrend,
   computeResolutionTimeTrend,
+  computeRevenueTrend,
   computeSlaComplianceTrend,
   computeRepeatServiceRate,
   aggregateOpenRequestsByPriority,
@@ -123,6 +124,7 @@ export function InternalDashboard({ user }: InternalDashboardProps) {
     () => computeResolutionTimeTrend(serviceRequests),
     [serviceRequests]
   );
+  const revenueTrend = useMemo(() => computeRevenueTrend(serviceRequests), [serviceRequests]);
   const slaTrend = useMemo(() => computeSlaComplianceTrend(serviceRequests), [serviceRequests]);
   const priorityBreakdown = useMemo(
     () => aggregateOpenRequestsByPriority(serviceRequests),
@@ -177,6 +179,25 @@ export function InternalDashboard({ user }: InternalDashboardProps) {
         ? "up"
         : "down";
 
+  // Revenue: higher closed-request value this month is good, lower is bad -
+  // same resolved/closed definition as the Overview "Revenue" KPI card.
+  const revenueDeltaLabel =
+    revenueTrend.deltaPct === null
+      ? "Not enough data yet"
+      : `${revenueTrend.deltaPct >= 0 ? "+" : ""}${Math.round(revenueTrend.deltaPct)}% vs last month`;
+  const revenueDeltaTone =
+    revenueTrend.deltaPct === null || revenueTrend.deltaPct === 0
+      ? "neutral"
+      : revenueTrend.deltaPct > 0
+        ? "success"
+        : "danger";
+  const revenueDeltaDirection =
+    revenueTrend.deltaPct === null || revenueTrend.deltaPct === 0
+      ? undefined
+      : revenueTrend.deltaPct > 0
+        ? "up"
+        : "down";
+
   // SLA compliance: higher percentage met is good, lower is bad.
   const slaValue = slaTrend.pctThisPeriod === null ? "—" : `${Math.round(slaTrend.pctThisPeriod)}%`;
   const slaDeltaLabel =
@@ -225,7 +246,13 @@ export function InternalDashboard({ user }: InternalDashboardProps) {
             onRetry={() => serviceRequestsQuery.refetch()}
           />
         ) : (
-          <StaggerGrid className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          // 2x2 grid, filled row-by-row: Open requests (left) sits above
+          // Revenue (left), Avg time to resolution (right) sits above SLA
+          // compliance (right). Open requests and Revenue are the headline
+          // business metrics and get the bigger "illustrated" card style
+          // (badge icon, full-width chart); the two operational metrics stay
+          // compact on the right.
+          <StaggerGrid className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <StaggerItem>
               <TrendMetricCard
                 label="Open requests"
@@ -235,6 +262,7 @@ export function InternalDashboard({ user }: InternalDashboardProps) {
                 deltaTone={openDeltaTone}
                 deltaDirection={openDeltaDirection}
                 sparklineValues={openTrend.weeklySparkline}
+                illustrated
               />
             </StaggerItem>
             <StaggerItem>
@@ -246,6 +274,19 @@ export function InternalDashboard({ user }: InternalDashboardProps) {
                 deltaTone={resolutionDeltaTone}
                 deltaDirection={resolutionDeltaDirection}
                 sparklineValues={resolutionTrend.weeklySparkline}
+                className="h-full"
+              />
+            </StaggerItem>
+            <StaggerItem>
+              <TrendMetricCard
+                label="Revenue"
+                value={formatCurrency(revenueTrend.totalThisPeriod)}
+                icon={CurrencyDollar}
+                deltaLabel={revenueDeltaLabel}
+                deltaTone={revenueDeltaTone}
+                deltaDirection={revenueDeltaDirection}
+                sparklineValues={revenueTrend.weeklySparkline}
+                illustrated
               />
             </StaggerItem>
             <StaggerItem>
@@ -258,6 +299,7 @@ export function InternalDashboard({ user }: InternalDashboardProps) {
                 deltaDirection={slaDeltaDirection}
                 caption={slaCaption}
                 sparklineValues={slaTrend.weeklySparkline}
+                className="h-full"
               />
             </StaggerItem>
           </StaggerGrid>

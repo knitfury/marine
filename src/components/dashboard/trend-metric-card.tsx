@@ -34,9 +34,29 @@ export interface TrendMetricCardProps {
   /** Small muted footer line, e.g. the SLA target breakdown text. */
   caption?: string;
   sparklineValues?: number[];
+  /**
+   * Renders a bigger, more graphic treatment: the icon sits in a tinted
+   * circle badge, the value gets more room, and the sparkline becomes a
+   * full-width chart under the value instead of a small inline one beside
+   * it. Used for the headline business metrics (Open requests, Revenue) to
+   * give them more visual weight than the compact operational metrics
+   * (Avg time to resolution, SLA compliance) in the same row.
+   */
+  illustrated?: boolean;
   isLoading?: boolean;
   className?: string;
 }
+
+/** Tinted circle badge behind an illustrated card's icon - reuses the same
+ * success/warning/danger tone the delta line itself uses (a low-opacity
+ * tinted background plus a matching icon color), rather than a fixed
+ * neutral badge for every card regardless of what the metric is saying. */
+const DELTA_ICON_BADGE_CLASS: Record<NonNullable<TrendMetricCardProps["deltaTone"]>, string> = {
+  success: "bg-success/10 text-success",
+  warning: "bg-warning/10 text-warning",
+  danger: "bg-danger/10 text-danger",
+  neutral: "bg-muted text-muted-foreground",
+};
 
 const DELTA_TONE_CLASS: Record<NonNullable<TrendMetricCardProps["deltaTone"]>, string> = {
   success: "text-success",
@@ -61,10 +81,54 @@ export function TrendMetricCard({
   deltaDirection,
   caption,
   sparklineValues,
+  illustrated,
   isLoading,
   className,
 }: TrendMetricCardProps) {
   const colors = useChartColors();
+  const hasSparkline = !!sparklineValues && sparklineValues.length > 0;
+
+  const deltaRow = deltaLabel && (
+    <div className={cn("flex items-center gap-1 text-xs font-medium", DELTA_TONE_CLASS[deltaTone])}>
+      {deltaDirection === "up" && <TrendUp className="size-3.5" aria-hidden="true" />}
+      {deltaDirection === "down" && <TrendDown className="size-3.5" aria-hidden="true" />}
+      <span>{deltaLabel}</span>
+    </div>
+  );
+
+  if (illustrated) {
+    return (
+      <Card className={className}>
+        <CardContent className="flex flex-col gap-3 p-5">
+          <div className="flex items-center gap-2.5">
+            {Icon && (
+              <span
+                className={cn(
+                  "flex size-9 shrink-0 items-center justify-center rounded-full",
+                  DELTA_ICON_BADGE_CLASS[deltaTone]
+                )}
+              >
+                <Icon className="size-4.5" aria-hidden="true" />
+              </span>
+            )}
+            <span className="text-sm font-medium text-muted-foreground">{label}</span>
+          </div>
+
+          {isLoading ? (
+            <Skeleton className="h-10 w-32" />
+          ) : (
+            <span className="text-4xl font-semibold tracking-tight text-foreground">{value}</span>
+          )}
+
+          {!isLoading && hasSparkline && (
+            <Sparkline values={sparklineValues!} color={colors.accent} height={56} />
+          )}
+
+          {isLoading ? <Skeleton className="h-4 w-32" /> : deltaRow}
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className={className}>
@@ -79,23 +143,15 @@ export function TrendMetricCard({
         ) : (
           <div className="flex items-center justify-between gap-3">
             <span className="text-3xl font-semibold tracking-tight text-foreground">{value}</span>
-            {sparklineValues && sparklineValues.length > 0 && (
-              <Sparkline values={sparklineValues} color={colors.accent} />
+            {hasSparkline && (
+              <div className="w-[72px] shrink-0">
+                <Sparkline values={sparklineValues!} color={colors.accent} />
+              </div>
             )}
           </div>
         )}
 
-        {isLoading ? (
-          <Skeleton className="h-4 w-32" />
-        ) : (
-          deltaLabel && (
-            <div className={cn("flex items-center gap-1 text-xs font-medium", DELTA_TONE_CLASS[deltaTone])}>
-              {deltaDirection === "up" && <TrendUp className="size-3.5" aria-hidden="true" />}
-              {deltaDirection === "down" && <TrendDown className="size-3.5" aria-hidden="true" />}
-              <span>{deltaLabel}</span>
-            </div>
-          )
-        )}
+        {isLoading ? <Skeleton className="h-4 w-32" /> : deltaRow}
 
         {caption && !isLoading && <p className="text-xs text-muted-foreground">{caption}</p>}
       </CardContent>
