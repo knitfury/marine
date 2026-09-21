@@ -210,6 +210,7 @@ export async function getDashboardSummary(
         activeCustomers: 0,
         activeEquipment: 0,
         equipmentInMaintenance: 0,
+        totalRevenue: 0,
       });
     }
 
@@ -230,6 +231,10 @@ export async function getDashboardSummary(
           ? mockCustomers.filter((c) => c.dealerId === user.organizationId && c.status === "active").length
           : mockCustomers.filter((c) => c.id === user.organizationId && c.status === "active").length;
 
+    const totalRevenue = requests
+      .filter((sr) => sr.status === "resolved" || sr.status === "closed")
+      .reduce((sum, sr) => sum + (sr.estimatedValue ?? 0), 0);
+
     const summary: DashboardSummary = {
       openServiceRequests: requests.filter((sr) =>
         OPEN_SERVICE_REQUEST_STATUSES.includes(sr.status)
@@ -241,6 +246,7 @@ export async function getDashboardSummary(
       activeEquipment: equipment.filter((eq) => eq.currentStatus === "active").length,
       equipmentInMaintenance: equipment.filter((eq) => eq.currentStatus === "maintenance")
         .length,
+      totalRevenue,
     };
 
     return dashboardSummarySchema.parse(summary);
@@ -494,6 +500,7 @@ export interface CreateServiceRequestInput {
   equipmentId?: string;
   customerId?: string;
   dealerId?: string;
+  estimatedValue?: number;
 }
 
 /** Raises a new service request via the real API (`POST /api/

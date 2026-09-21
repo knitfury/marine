@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { StatusBadge, PriorityBadge } from "@/components/shared";
 import { entityHref } from "@/lib/routes";
 import { formatRelativeTime } from "@/lib/formatting/date";
+import { formatCurrency } from "@/lib/formatting";
 import { cn } from "@/lib/utils";
 import type { ServiceRequest } from "@/types";
 
@@ -40,6 +41,9 @@ export function ServiceRequestListRow({
   if (equipmentName) stats.push({ label: "Equipment", value: equipmentName });
   if (customerName) stats.push({ label: "Customer", value: customerName });
   if (dealerName) stats.push({ label: "Dealer", value: dealerName });
+  if (request.estimatedValue != null) {
+    stats.push({ label: "Value", value: formatCurrency(request.estimatedValue) });
+  }
 
   return (
     <Link

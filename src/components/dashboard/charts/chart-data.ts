@@ -117,6 +117,49 @@ export function bucketServiceRequestsByWeek(requests: ServiceRequest[]): WeeklyT
   return points;
 }
 
+export interface WeeklyRevenuePoint {
+  /** ISO timestamp for the start (Sunday, UTC midnight) of this week. */
+  weekStart: string;
+  /** Short display label, e.g. "Jun 22". */
+  label: string;
+  value: number;
+}
+
+/**
+ * Buckets service requests' estimatedValue by calendar week (Sunday-Saturday,
+ * UTC) based on createdAt, filling zero-value weeks for a continuous trend -
+ * same approach as bucketServiceRequestsByWeek. Includes every request
+ * regardless of status (this is "value logged per week", not "revenue
+ * collected" - the dashboard's Revenue KPI card, which only counts
+ * resolved/closed requests, is a deliberately different, narrower number;
+ * both are clearly labeled in the UI so they aren't confused for each other).
+ * Requests without an estimatedValue contribute 0.
+ */
+export function bucketServiceRequestsRevenueByWeek(requests: ServiceRequest[]): WeeklyRevenuePoint[] {
+  if (requests.length === 0) return [];
+
+  const sums = new Map<number, number>();
+  for (const request of requests) {
+    const weekStart = startOfWeekUTC(new Date(request.createdAt));
+    sums.set(weekStart, (sums.get(weekStart) ?? 0) + (request.estimatedValue ?? 0));
+  }
+
+  const weekStarts = [...sums.keys()].sort((a, b) => a - b);
+  const first = weekStarts[0];
+  const last = weekStarts[weekStarts.length - 1];
+  if (first === undefined || last === undefined) return [];
+
+  const points: WeeklyRevenuePoint[] = [];
+  for (let t = first; t <= last; t += WEEK_MS) {
+    points.push({
+      weekStart: new Date(t).toISOString(),
+      label: WEEK_LABEL_FORMATTER.format(new Date(t)),
+      value: sums.get(t) ?? 0,
+    });
+  }
+  return points;
+}
+
 /**
  * An evenly-spaced subset of `values` (always including the first and last),
  * capped at `max` entries - keeps axis tick labels from overlapping on

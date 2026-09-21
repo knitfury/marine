@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   ClipboardText,
+  CurrencyDollar,
   Warning,
   Storefront,
   UsersThree,
@@ -23,7 +24,12 @@ import {
 } from "@/components/shared";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardSection } from "@/components/dashboard/dashboard-section";
-import { ServiceStatusChart, ServiceTrendChart, EquipmentStatusChart } from "@/components/dashboard/charts";
+import {
+  ServiceStatusChart,
+  ServiceTrendChart,
+  RevenueTrendChart,
+  EquipmentStatusChart,
+} from "@/components/dashboard/charts";
 import {
   getDashboardInsights,
   getDashboardSummary,
@@ -33,6 +39,7 @@ import {
   getServiceRequests,
 } from "@/lib/mock-api";
 import { formatLongDate } from "@/lib/formatting/date";
+import { formatCurrency } from "@/lib/formatting";
 import type { User } from "@/types";
 
 const RECENT_PREVIEW_COUNT = 4;
@@ -104,7 +111,17 @@ export function InternalDashboard({ user }: InternalDashboardProps) {
             onRetry={() => summaryQuery.refetch()}
           />
         ) : (
-          <StaggerGrid className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+          <StaggerGrid className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
+            <StaggerItem>
+              <MetricCard
+                label="Revenue"
+                value={formatCurrency(summary?.totalRevenue ?? 0)}
+                icon={CurrencyDollar}
+                href="/service"
+                isLoading={summaryQuery.isLoading}
+                className="ring-1 ring-success/30 bg-success/5"
+              />
+            </StaggerItem>
             <StaggerItem>
               <MetricCard
                 label="Open requests"
@@ -212,6 +229,33 @@ export function InternalDashboard({ user }: InternalDashboardProps) {
               <Card>
                 <CardContent className="pt-5">
                   <ServiceTrendChart requests={serviceRequests} />
+                </CardContent>
+              </Card>
+            )}
+          </DashboardSection>
+
+          <DashboardSection
+            title="Revenue trend"
+            description="Estimated value of requests logged weekly, company-wide."
+            viewAllHref="/service"
+          >
+            {serviceRequestsQuery.isLoading ? (
+              <LoadingSkeleton variant="list" count={1} />
+            ) : serviceRequestsQuery.isError ? (
+              <ErrorState
+                heading="Couldn't load service requests"
+                description="Something went wrong fetching service requests."
+                onRetry={() => serviceRequestsQuery.refetch()}
+              />
+            ) : serviceRequests.length === 0 ? (
+              <EmptyState
+                heading="No service requests yet"
+                description="Service requests will show up here as dealers and customers submit them."
+              />
+            ) : (
+              <Card>
+                <CardContent className="pt-5">
+                  <RevenueTrendChart requests={serviceRequests} />
                 </CardContent>
               </Card>
             )}

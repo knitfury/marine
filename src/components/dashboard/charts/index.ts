@@ -10,6 +10,9 @@ export type { EquipmentStatusChartProps } from "./equipment-status-chart";
 export { ServiceTrendChart } from "./service-trend-chart";
 export type { ServiceTrendChartProps } from "./service-trend-chart";
 
+export { RevenueTrendChart } from "./revenue-trend-chart";
+export type { RevenueTrendChartProps } from "./revenue-trend-chart";
+
 export { CategoryBarChart } from "./category-bar-chart";
 export type { CategoryBarChartProps } from "./category-bar-chart";
 
@@ -21,6 +24,7 @@ export {
   aggregateServiceRequestsByPriority,
   aggregateEquipmentByStatus,
   bucketServiceRequestsByWeek,
+  bucketServiceRequestsRevenueByWeek,
   pickTicks,
 } from "./chart-data";
-export type { CategoryCount, WeeklyTrendPoint } from "./chart-data";
+export type { CategoryCount, WeeklyTrendPoint, WeeklyRevenuePoint } from "./chart-data";

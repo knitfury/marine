@@ -28,6 +28,7 @@ export const serviceRequestSchema = z.object({
   createdAt: z.string().datetime({ offset: true }),
   updatedAt: z.string().datetime({ offset: true }),
   summary: z.string(),
+  estimatedValue: z.number().nonnegative().optional(),
 });
 
 /**
@@ -47,6 +48,17 @@ export const createServiceRequestSchema = z.object({
    * Select doesn't allow an empty-string item value) - translated to
    * `undefined` before being sent to the mock API. */
   equipmentId: z.string().min(1).optional(),
+  /**
+   * The form submits this as a string from a number input, so it's coerced
+   * to `number`. A `preprocess` step runs first to turn an empty string (or
+   * missing/null value) into `undefined` *before* coercion - without it,
+   * `z.coerce.number()` runs `Number("")`, which is `0`, not `NaN`, so an
+   * empty field would silently become "$0" instead of "not provided".
+   */
+  estimatedValue: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : val),
+    z.coerce.number().nonnegative().optional()
+  ),
 });
 
 export type CreateServiceRequestFormValues = z.infer<typeof createServiceRequestSchema>;

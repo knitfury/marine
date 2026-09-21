@@ -22,4 +22,6 @@ export interface ServiceRequest {
   /** ISO 8601 timestamp. */
   updatedAt: string;
   summary: string;
+  /** Optional estimated dollar value of the work, in USD. */
+  estimatedValue?: number;
 }

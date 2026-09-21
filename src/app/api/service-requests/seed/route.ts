@@ -32,6 +32,12 @@ export async function POST(request: Request): Promise<Response> {
         equipmentId: sr.equipmentId,
         customerId: sr.customerId,
         dealerId: sr.dealerId,
+        estimatedValue: sr.estimatedValue,
+        // Reuses the fixture's own historical `createdAt` as the seed-only
+        // `requestedAt` override, so seeded rows get a realistic date
+        // spread instead of every row landing on "now" (see
+        // seedServiceRequestsIfEmpty's doc comment).
+        requestedAt: sr.createdAt,
       }))
     );
     return Response.json(result);

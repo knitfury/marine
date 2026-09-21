@@ -31,8 +31,15 @@
  *   customerId      <-> row.customerId                   (1:1, nullable)
  *   dealerId        <-> row.dealerId                     (1:1, nullable)
  *   summary         <-> row.summary                      (1:1)
- *   createdAt       <-  row.CREATEDTIME  (see parseCatalystTimeApprox below)
+ *   createdAt       <-  row.requestedAt || row.CREATEDTIME (see
+ *                        parseCatalystTimeApprox below; `requestedAt` is an
+ *                        OPTIONAL varchar override, only ever written by the
+ *                        seed path, that lets seeded historical demo rows
+ *                        get a realistic createdAt instead of every seeded
+ *                        row landing on "now" - see seedServiceRequestsIfEmpty)
  *   updatedAt       <-  row.MODIFIEDTIME (see parseCatalystTimeApprox below)
+ *   estimatedValue  <-> row.estimatedValue                (1:1, nullable
+ *                        decimal/double - the dollar value of the work)
  */
 import type { CatalystApp } from "zcatalyst-sdk-node/lib/catalyst-app";
 import type { ICatalystRow } from "zcatalyst-sdk-node/lib/utils/pojo/common";
@@ -93,9 +100,13 @@ function rowToServiceRequest(row: ICatalystRow): unknown {
     equipmentId: row.equipmentId || undefined,
     customerId: row.customerId || undefined,
     dealerId: row.dealerId || undefined,
-    createdAt: parseCatalystTimeApprox(row.CREATEDTIME),
+    // `requestedAt` is an optional seed-only override for createdAt (see
+    // module doc above) - preferred over CREATEDTIME when present, since
+    // CREATEDTIME can't be backdated via the SDK.
+    createdAt: parseCatalystTimeApprox(row.requestedAt || row.CREATEDTIME),
     updatedAt: parseCatalystTimeApprox(row.MODIFIEDTIME),
     summary: row.summary,
+    estimatedValue: row.estimatedValue != null && row.estimatedValue !== "" ? Number(row.estimatedValue) : undefined,
   };
 }
 
@@ -177,6 +188,10 @@ export async function createServiceRequestRow(
     equipmentId: input.equipmentId ?? null,
     customerId: input.customerId ?? null,
     dealerId: input.dealerId ?? null,
+    estimatedValue: input.estimatedValue ?? null,
+    // `requestedAt` is intentionally never written here - only the seed
+    // path backdates a request; a live-created request always gets its
+    // real CREATEDTIME.
   });
 
   return serviceRequestSchema.parse(rowToServiceRequest(insertedRow));
@@ -192,6 +207,10 @@ export interface SeedServiceRequestInput {
   equipmentId?: string;
   customerId?: string;
   dealerId?: string;
+  estimatedValue?: number;
+  /** ISO 8601 string - the fixture's own historical `createdAt`, written to
+   * the `requestedAt` override column (see module doc). */
+  requestedAt?: string;
 }
 
 /**
@@ -206,13 +225,20 @@ export interface SeedServiceRequestInput {
  * table has *any* rows, seeded or real.
  *
  * CAVEAT: `CREATEDTIME`/`MODIFIEDTIME` are Catalyst system columns the SDK
- * doesn't let a write override - every seeded row gets "now" as its
- * created/modified time, not the varied historical dates the original
- * fixture data (src/data/mock-service-requests.ts) was authored with. The
- * status/priority/team/equipment breakdown charts are unaffected (they
- * don't depend on time), but the weekly request-volume trend chart will
- * show all seeded rows landing in the current week rather than spread
- * across the last few months.
+ * doesn't let a write override - every seeded row still gets "now" as its
+ * actual CREATEDTIME/MODIFIEDTIME, not the varied historical dates the
+ * original fixture data (src/data/mock-service-requests.ts) was authored
+ * with. That's still true and unchanged, and it still means anything that
+ * reads CREATEDTIME/MODIFIEDTIME directly (e.g. "Updated" timestamps
+ * elsewhere) will show "now" for freshly-seeded rows.
+ *
+ * However, this is now MITIGATED for chart purposes: each fixture also
+ * writes its own historical `createdAt` into the `requestedAt` override
+ * column, and `rowToServiceRequest` prefers `requestedAt` over CREATEDTIME
+ * when mapping a row's `createdAt` (see module doc). So the weekly
+ * request-volume/revenue trend charts, which key off `createdAt`, see the
+ * fixtures' real historical spread instead of every seeded row landing in
+ * the current week.
  */
 export async function seedServiceRequestsIfEmpty(
   app: CatalystApp,
@@ -235,6 +261,8 @@ export async function seedServiceRequestsIfEmpty(
       equipmentId: f.equipmentId ?? null,
       customerId: f.customerId ?? null,
       dealerId: f.dealerId ?? null,
+      estimatedValue: f.estimatedValue ?? null,
+      requestedAt: f.requestedAt ?? null,
     }))
   );
 

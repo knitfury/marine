@@ -50,6 +50,7 @@ const DEFAULT_VALUES: CreateServiceRequestFormValues = {
   priority: "medium",
   assignedTeam: "",
   equipmentId: NO_EQUIPMENT_VALUE,
+  estimatedValue: undefined,
 };
 
 export interface RaiseRequestDialogProps {
@@ -161,6 +162,7 @@ export function RaiseRequestDialog({ trigger, defaultEquipmentId }: RaiseRequest
       equipmentId,
       customerId,
       dealerId,
+      estimatedValue: values.estimatedValue,
     });
   }
 
@@ -253,6 +255,30 @@ export function RaiseRequestDialog({ trigger, defaultEquipmentId }: RaiseRequest
                 <p className="text-xs text-danger">{form.formState.errors.assignedTeam.message}</p>
               )}
             </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="raise-request-estimated-value">
+              Estimated value ($) <span className="text-muted-foreground">(optional)</span>
+            </Label>
+            <Input
+              id="raise-request-estimated-value"
+              type="number"
+              min="0"
+              step="1"
+              placeholder="e.g. 4500"
+              {...form.register("estimatedValue", {
+                // RHF's built-in `valueAsNumber` runs `parseFloat("")`,
+                // which is `NaN`, not `undefined` - a custom `setValueAs`
+                // keeps an empty field as "not provided" instead, matching
+                // the schema's own empty-string-to-undefined handling (see
+                // createServiceRequestSchema).
+                setValueAs: (value) => (value === "" ? undefined : Number(value)),
+              })}
+            />
+            {form.formState.errors.estimatedValue && (
+              <p className="text-xs text-danger">{form.formState.errors.estimatedValue.message}</p>
+            )}
           </div>
 
           <div className="flex flex-col gap-1.5">

@@ -10,4 +10,6 @@ export interface DashboardSummary {
   activeCustomers: number;
   activeEquipment: number;
   equipmentInMaintenance: number;
+  /** Sum of `estimatedValue` across resolved/closed requests in scope, in USD. */
+  totalRevenue: number;
 }

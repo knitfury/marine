@@ -7,4 +7,5 @@ export const dashboardSummarySchema = z.object({
   activeCustomers: z.number().int().nonnegative(),
   activeEquipment: z.number().int().nonnegative(),
   equipmentInMaintenance: z.number().int().nonnegative(),
+  totalRevenue: z.number().nonnegative(),
 });

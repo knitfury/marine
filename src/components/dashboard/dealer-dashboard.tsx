@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { ClipboardText, Warning, Wrench, Gear } from "@phosphor-icons/react";
+import { ClipboardText, CurrencyDollar, Warning, Wrench, Gear } from "@phosphor-icons/react";
 import {
   PageHeader,
   MetricCard,
@@ -27,6 +27,7 @@ import {
 } from "@/lib/mock-api";
 import { entityHref } from "@/lib/routes";
 import { formatLongDate } from "@/lib/formatting/date";
+import { formatCurrency } from "@/lib/formatting";
 import type { User } from "@/types";
 
 const RECENT_PREVIEW_COUNT = 5;
@@ -129,7 +130,17 @@ export function DealerDashboard({ user }: DealerDashboardProps) {
             onRetry={() => summaryQuery.refetch()}
           />
         ) : (
-          <StaggerGrid className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <StaggerGrid className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+            <StaggerItem>
+              <MetricCard
+                label="Revenue"
+                value={formatCurrency(summary?.totalRevenue ?? 0)}
+                icon={CurrencyDollar}
+                href="/service"
+                isLoading={summaryQuery.isLoading}
+                className="ring-1 ring-success/30 bg-success/5"
+              />
+            </StaggerItem>
             <StaggerItem>
               <MetricCard
                 label="Open requests"

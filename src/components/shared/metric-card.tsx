@@ -79,7 +79,7 @@ export function MetricCard({
           className
         )}
       >
-        <Card className="h-full transition-shadow hover:shadow-md">{body}</Card>
+        <Card className={cn("h-full transition-shadow hover:shadow-md", className)}>{body}</Card>
       </Link>
     );
   }

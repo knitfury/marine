@@ -30,6 +30,7 @@ import {
   canViewServiceRequest,
 } from "@/lib/permissions/can-view";
 import { formatDate } from "@/lib/formatting/date";
+import { formatCurrency } from "@/lib/formatting";
 import { entityHref } from "@/lib/routes";
 import { useRoleStore } from "@/stores/role-store";
 
@@ -165,6 +166,9 @@ export function ServiceDetail({ id }: ServiceDetailProps) {
         <KeyValueList
           items={[
             { label: "Assigned team", value: request.assignedTeam },
+            ...(request.estimatedValue != null
+              ? [{ label: "Estimated value", value: formatCurrency(request.estimatedValue) }]
+              : []),
             { label: "Created", value: formatDate(request.createdAt) },
             { label: "Updated", value: formatDate(request.updatedAt) },
           ]}
