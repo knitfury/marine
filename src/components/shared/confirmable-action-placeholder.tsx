@@ -21,7 +21,7 @@ export interface ConfirmableActionPlaceholderProps extends Omit<ButtonProps, "on
 }
 
 const DEFAULT_MESSAGE =
-  "This action isn't available in the Phase 1 demo — it will be enabled once MarineLink connects to real service workflows.";
+  "This action isn't available yet — it will be enabled once MarineLink connects to real service workflows.";
 
 /**
  * Stand-in for create/edit/close/etc. actions that are explicitly out of
@@ -51,7 +51,7 @@ export function ConfirmableActionPlaceholder({
       </Button>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Not available in this demo</DialogTitle>
+          <DialogTitle>Not available yet</DialogTitle>
           <DialogDescription>{message}</DialogDescription>
         </DialogHeader>
         <DialogFooter>

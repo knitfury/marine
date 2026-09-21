@@ -31,7 +31,6 @@ import {
   createServiceRequest,
   getCurrentMockUser,
   getEquipment,
-  getServiceRequests,
   type CreateServiceRequestInput,
 } from "@/lib/mock-api";
 import { invalidateServiceRequestRelatedQueries } from "@/lib/query-invalidation";
@@ -39,7 +38,7 @@ import {
   createServiceRequestSchema,
   type CreateServiceRequestFormValues,
 } from "@/schemas/service-request";
-import { SERVICE_REQUEST_PRIORITIES } from "@/lib/constants/status";
+import { SERVICE_REQUEST_PRIORITIES, SERVICE_REQUEST_TEAMS } from "@/lib/constants/status";
 import { formatServiceRequestPriority } from "@/lib/formatting/status";
 import { useRoleStore } from "@/stores/role-store";
 
@@ -98,19 +97,6 @@ export function RaiseRequestDialog({ trigger, defaultEquipmentId }: RaiseRequest
     enabled: !!user && open,
   });
   const equipmentOptions = equipmentQuery.data ?? [];
-
-  // Distinct assigned-team values across existing service requests, the
-  // same "derive filter/select options from the data" pattern
-  // equipment-directory.tsx uses for its equipment-type filter.
-  const teamOptionsQuery = useQuery({
-    queryKey: ["service-requests", "assigned-team-options"],
-    queryFn: () => getServiceRequests(),
-    enabled: open,
-  });
-  const teamOptions = React.useMemo(() => {
-    const teams = new Set((teamOptionsQuery.data ?? []).map((sr) => sr.assignedTeam));
-    return [...teams].sort();
-  }, [teamOptionsQuery.data]);
 
   const form = useForm<CreateServiceRequestFormValues>({
     resolver: zodResolver(createServiceRequestSchema),
@@ -254,7 +240,7 @@ export function RaiseRequestDialog({ trigger, defaultEquipmentId }: RaiseRequest
                       <SelectValue placeholder="Select a team" />
                     </SelectTrigger>
                     <SelectContent>
-                      {teamOptions.map((team) => (
+                      {SERVICE_REQUEST_TEAMS.map((team) => (
                         <SelectItem key={team} value={team}>
                           {team}
                         </SelectItem>

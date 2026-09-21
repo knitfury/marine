@@ -61,7 +61,7 @@ export default function DealerSelfProfilePage() {
       <PageHeader title="My Dealer Profile" />
       <EmptyState
         heading="No dealer profile for your account"
-        description="This page shows your own dealer profile for dealer accounts. Switch to the dealer demo role to view it."
+        description="This page shows your own dealer profile for dealer accounts. Switch to the dealer role to view it."
       />
     </PageContainer>
   );

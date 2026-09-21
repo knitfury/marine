@@ -60,7 +60,7 @@ export default function CustomerSelfProfilePage() {
       <PageHeader title="My Profile" />
       <EmptyState
         heading="No customer profile for your account"
-        description="This page shows your own customer profile for customer accounts. Switch to the customer demo role to view it."
+        description="This page shows your own customer profile for customer accounts. Switch to the customer role to view it."
       />
     </PageContainer>
   );

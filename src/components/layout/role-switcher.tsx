@@ -10,7 +10,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
 import { useRoleStore } from "@/stores/role-store";
 import { ROLE_LABELS, USER_ROLES } from "@/lib/constants/roles";
 import { cn } from "@/lib/utils";
@@ -21,11 +20,11 @@ export interface RoleSwitcherProps {
 }
 
 /**
- * Demo-only role switcher (Phase 1 has no real auth - see spec 5.4/24). The
- * "Demo Mode" badge sits right next to the trigger so it can never read as
- * a real account switcher. Switching roles navigates to `/dashboard` if the
- * person isn't already there, since a role's other routes (e.g. a dealer's
- * own profile) may not make sense for the newly selected role.
+ * Role switcher (Phase 1 has no real auth - see spec 5.4/24), letting
+ * whoever's signed in preview the app as internal staff, a dealer, or a
+ * customer. Switching roles navigates to `/dashboard` if the person isn't
+ * already there, since a role's other routes (e.g. a dealer's own profile)
+ * may not make sense for the newly selected role.
  */
 export function RoleSwitcher({ className }: RoleSwitcherProps) {
   const { role, setRole } = useRoleStore();
@@ -67,9 +66,6 @@ export function RoleSwitcher({ className }: RoleSwitcherProps) {
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
-      <Badge variant="warning" className="hidden md:inline-flex">
-        Demo Mode
-      </Badge>
     </div>
   );
 }
