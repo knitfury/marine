@@ -3,9 +3,14 @@
 /* =============================================================================
    MarineLink design tokens
    -----------------------------------------------------------------------------
-   A marine-inspired, restrained neutral design language: deep navy/ink as the
-   primary brand color, soft off-white / cool-gray neutrals, an ocean/teal
-   accent, and desaturated semantic colors (success/warning/danger/info).
+   A restrained, corporate-SaaS design language in the spirit of Zoho's own
+   product suite (CRM/Books/Catalyst console): deep navy/ink as the primary
+   brand color, soft off-white / cool-gray neutrals, a professional blue
+   accent, desaturated semantic colors (success/warning/danger/info), and a
+   tighter corner-radius scale than a consumer/startup app would use. The
+   blue below approximates Zoho's product-suite accent color by eye (no
+   official Zoho brand kit was available to source an exact hex from) -
+   swap `--color-blue-*` for an exact value if one is provided later.
 
    Tokens are defined twice:
      1. As CSS custom properties on :root (light) and .dark (dark theme) -
@@ -46,17 +51,17 @@
   --color-neutral-900: #181d24;
   --color-neutral-950: #0c0f13;
 
-  /* ---- Accent: ocean/teal -------------------------------------------------*/
-  --color-teal-900: #04312f;
-  --color-teal-800: #064843;
-  --color-teal-700: #0a635c;
-  --color-teal-600: #0f8378;
-  --color-teal-500: #17a094;
-  --color-teal-400: #3fbcae;
-  --color-teal-300: #7bd4c8;
-  --color-teal-200: #b3e6dc;
-  --color-teal-100: #dcf3ee;
-  --color-teal-50: #f1faf8;
+  /* ---- Accent: Zoho-style professional blue -------------------------------*/
+  --color-blue-900: #0a2a4a;
+  --color-blue-800: #0f3a63;
+  --color-blue-700: #144d82;
+  --color-blue-600: #1a63a8;
+  --color-blue-500: #2478c4;
+  --color-blue-400: #4a95d6;
+  --color-blue-300: #7fb6e3;
+  --color-blue-200: #b8d8f0;
+  --color-blue-100: #dcebf8;
+  --color-blue-50: #f0f7fc;
 
   /* ---- Semantic (restrained, not neon) ----------------------------------- */
   --color-success-700: #1e6b45;
@@ -94,16 +99,16 @@
   --secondary: var(--color-neutral-100);
   --secondary-foreground: var(--color-navy-900);
 
-  --accent: var(--color-teal-600);
+  --accent: var(--color-blue-600);
   --accent-foreground: var(--color-neutral-0);
-  --accent-hover: var(--color-teal-700);
+  --accent-hover: var(--color-blue-700);
 
   --muted: var(--color-neutral-100);
   --muted-foreground: var(--color-neutral-600);
 
   --border: var(--color-neutral-200);
   --input: var(--color-neutral-200);
-  --ring: var(--color-teal-500);
+  --ring: var(--color-blue-500);
 
   --success: var(--color-success-600);
   --success-foreground: var(--color-neutral-0);
@@ -126,11 +131,13 @@
   --info-subtle-foreground: var(--color-info-700);
 
   /* ---- Radii --------------------------------------------------------------*/
+  /* Tighter than a consumer/startup scale (was 12/16/24px) - Zoho's own
+     product UI keeps corners modest rather than pillowy. */
   --radius-sm: 0.25rem;
   --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
-  --radius-2xl: 1.5rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.625rem;
+  --radius-2xl: 0.875rem;
   --radius-full: 9999px;
 
   /* ---- Shadows --------------------------------------------------------------*/
@@ -163,16 +170,16 @@
   --secondary: var(--color-navy-800);
   --secondary-foreground: var(--color-neutral-50);
 
-  --accent: var(--color-teal-400);
+  --accent: var(--color-blue-400);
   --accent-foreground: var(--color-navy-950);
-  --accent-hover: var(--color-teal-300);
+  --accent-hover: var(--color-blue-300);
 
   --muted: var(--color-navy-800);
   --muted-foreground: var(--color-neutral-400);
 
   --border: var(--color-navy-700);
   --input: var(--color-navy-700);
-  --ring: var(--color-teal-400);
+  --ring: var(--color-blue-400);
 
   --success: var(--color-success-500);
   --success-foreground: var(--color-navy-950);
@@ -262,16 +269,16 @@
   --color-navy-900: var(--color-navy-900);
   --color-navy-950: var(--color-navy-950);
 
-  --color-teal-50: var(--color-teal-50);
-  --color-teal-100: var(--color-teal-100);
-  --color-teal-200: var(--color-teal-200);
-  --color-teal-300: var(--color-teal-300);
-  --color-teal-400: var(--color-teal-400);
-  --color-teal-500: var(--color-teal-500);
-  --color-teal-600: var(--color-teal-600);
-  --color-teal-700: var(--color-teal-700);
-  --color-teal-800: var(--color-teal-800);
-  --color-teal-900: var(--color-teal-900);
+  --color-blue-50: var(--color-blue-50);
+  --color-blue-100: var(--color-blue-100);
+  --color-blue-200: var(--color-blue-200);
+  --color-blue-300: var(--color-blue-300);
+  --color-blue-400: var(--color-blue-400);
+  --color-blue-500: var(--color-blue-500);
+  --color-blue-600: var(--color-blue-600);
+  --color-blue-700: var(--color-blue-700);
+  --color-blue-800: var(--color-blue-800);
+  --color-blue-900: var(--color-blue-900);
 
   --radius-sm: var(--radius-sm);
   --radius-md: var(--radius-md);
