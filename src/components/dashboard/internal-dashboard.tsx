@@ -29,6 +29,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardSection } from "@/components/dashboard/dashboard-section";
 import {
   ServiceStatusChart,
+  ServicePriorityChart,
   ServiceTrendChart,
   RevenueTrendChart,
   EquipmentStatusChart,
@@ -68,6 +69,12 @@ export interface InternalDashboardProps {
  * rollup - what needs attention right now, a status breakdown across every
  * open service request, and recent dealer/customer previews. Every list
  * query here is intentionally unfiltered (internal staff see everything).
+ *
+ * Section order is deliberate: the charts/analytics-heavy content (Service
+ * performance, Needs attention, Request volume/Revenue/Status breakdown,
+ * Open work by priority, Repeat service, Equipment category breakdown) leads
+ * the page, with the plain-number Overview strip placed further down as a
+ * secondary at-a-glance summary rather than the page's first impression.
  */
 export function InternalDashboard({ user }: InternalDashboardProps) {
   const summaryQuery = useQuery({
@@ -204,87 +211,6 @@ export function InternalDashboard({ user }: InternalDashboardProps) {
         title="Dashboard"
         description={`${formatLongDate()} — welcome back, ${user.name}. Here's what needs your attention across Marine Travelift today.`}
       />
-
-      <section aria-labelledby="dashboard-metrics-heading" className="flex flex-col gap-4">
-        <h2 id="dashboard-metrics-heading" className="text-sm font-semibold text-muted-foreground">
-          Overview
-        </h2>
-
-        {summaryQuery.isError ? (
-          <ErrorState
-            heading="Couldn't load dashboard metrics"
-            description="Something went wrong fetching the summary."
-            onRetry={() => summaryQuery.refetch()}
-          />
-        ) : (
-          <StaggerGrid className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            <StaggerItem>
-              <MetricCard
-                label="Revenue"
-                value={formatCurrency(summary?.totalRevenue ?? 0)}
-                icon={CurrencyDollar}
-                href="/service"
-                isLoading={summaryQuery.isLoading}
-                className="ring-1 ring-success/30 bg-success/5"
-              />
-            </StaggerItem>
-            <StaggerItem>
-              <MetricCard
-                label="Open requests"
-                value={summary?.openServiceRequests ?? 0}
-                icon={ClipboardText}
-                href="/service"
-                isLoading={summaryQuery.isLoading}
-              />
-            </StaggerItem>
-            <StaggerItem>
-              <MetricCard
-                label="High priority"
-                value={summary?.highPriorityRequests ?? 0}
-                icon={Warning}
-                href="/service"
-                isLoading={summaryQuery.isLoading}
-              />
-            </StaggerItem>
-            <StaggerItem>
-              <MetricCard
-                label="Active dealers"
-                value={summary?.activeDealers ?? 0}
-                icon={Storefront}
-                href="/dealers"
-                isLoading={summaryQuery.isLoading}
-              />
-            </StaggerItem>
-            <StaggerItem>
-              <MetricCard
-                label="Active customers"
-                value={summary?.activeCustomers ?? 0}
-                icon={UsersThree}
-                href="/customers"
-                isLoading={summaryQuery.isLoading}
-              />
-            </StaggerItem>
-            <StaggerItem>
-              <MetricCard
-                label="Active equipment"
-                value={summary?.activeEquipment ?? 0}
-                icon={Wrench}
-                href="/equipment"
-                isLoading={summaryQuery.isLoading}
-              />
-            </StaggerItem>
-            <StaggerItem>
-              <MetricCard
-                label="In maintenance"
-                value={summary?.equipmentInMaintenance ?? 0}
-                icon={Gear}
-                href="/equipment"
-                isLoading={summaryQuery.isLoading}
-              />
-            </StaggerItem>
-          </StaggerGrid>
-        )}
-      </section>
 
       <DashboardSection
         title="Service performance"
@@ -451,6 +377,30 @@ export function InternalDashboard({ user }: InternalDashboardProps) {
 
               <Card>
                 <CardHeader>
+                  <CardTitle className="text-sm">By priority</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  {serviceRequestsQuery.isLoading ? (
+                    <LoadingSkeleton variant="list" count={1} />
+                  ) : serviceRequestsQuery.isError ? (
+                    <ErrorState
+                      heading="Couldn't load service requests"
+                      description="Something went wrong fetching service requests."
+                      onRetry={() => serviceRequestsQuery.refetch()}
+                    />
+                  ) : serviceRequests.length === 0 ? (
+                    <EmptyState
+                      heading="No service requests yet"
+                      description="Service requests will show up here as dealers and customers submit them."
+                    />
+                  ) : (
+                    <ServicePriorityChart requests={serviceRequests} />
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
                   <CardTitle className="text-sm">By equipment status</CardTitle>
                 </CardHeader>
                 <CardContent className="pt-0">
@@ -579,6 +529,87 @@ export function InternalDashboard({ user }: InternalDashboardProps) {
           </Card>
         )}
       </DashboardSection>
+
+      <section aria-labelledby="dashboard-metrics-heading" className="flex flex-col gap-4">
+        <h2 id="dashboard-metrics-heading" className="text-sm font-semibold text-muted-foreground">
+          Overview
+        </h2>
+
+        {summaryQuery.isError ? (
+          <ErrorState
+            heading="Couldn't load dashboard metrics"
+            description="Something went wrong fetching the summary."
+            onRetry={() => summaryQuery.refetch()}
+          />
+        ) : (
+          <StaggerGrid className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            <StaggerItem>
+              <MetricCard
+                label="Revenue"
+                value={formatCurrency(summary?.totalRevenue ?? 0)}
+                icon={CurrencyDollar}
+                href="/service"
+                isLoading={summaryQuery.isLoading}
+                className="ring-1 ring-success/30 bg-success/5"
+              />
+            </StaggerItem>
+            <StaggerItem>
+              <MetricCard
+                label="Open requests"
+                value={summary?.openServiceRequests ?? 0}
+                icon={ClipboardText}
+                href="/service"
+                isLoading={summaryQuery.isLoading}
+              />
+            </StaggerItem>
+            <StaggerItem>
+              <MetricCard
+                label="High priority"
+                value={summary?.highPriorityRequests ?? 0}
+                icon={Warning}
+                href="/service"
+                isLoading={summaryQuery.isLoading}
+              />
+            </StaggerItem>
+            <StaggerItem>
+              <MetricCard
+                label="Active dealers"
+                value={summary?.activeDealers ?? 0}
+                icon={Storefront}
+                href="/dealers"
+                isLoading={summaryQuery.isLoading}
+              />
+            </StaggerItem>
+            <StaggerItem>
+              <MetricCard
+                label="Active customers"
+                value={summary?.activeCustomers ?? 0}
+                icon={UsersThree}
+                href="/customers"
+                isLoading={summaryQuery.isLoading}
+              />
+            </StaggerItem>
+            <StaggerItem>
+              <MetricCard
+                label="Active equipment"
+                value={summary?.activeEquipment ?? 0}
+                icon={Wrench}
+                href="/equipment"
+                isLoading={summaryQuery.isLoading}
+              />
+            </StaggerItem>
+            <StaggerItem>
+              <MetricCard
+                label="In maintenance"
+                value={summary?.equipmentInMaintenance ?? 0}
+                icon={Gear}
+                href="/equipment"
+                isLoading={summaryQuery.isLoading}
+              />
+            </StaggerItem>
+          </StaggerGrid>
+        )}
+      </section>
 
       <DashboardSection title="Dealers" viewAllHref="/dealers">
         {dealersQuery.isLoading ? (
