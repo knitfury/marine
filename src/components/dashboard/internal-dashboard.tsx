@@ -163,57 +163,59 @@ export function InternalDashboard({ user }: InternalDashboardProps) {
         )}
       </section>
 
-      <DashboardSection title="Needs attention">
-        {insightsQuery.isLoading ? (
-          <LoadingSkeleton variant="list" count={3} />
-        ) : insightsQuery.isError ? (
-          <ErrorState
-            heading="Couldn't load insights"
-            description="Something went wrong fetching insights."
-            onRetry={() => insightsQuery.refetch()}
-          />
-        ) : insights.length === 0 ? (
-          <EmptyState
-            heading="Nothing needs attention right now"
-            description="You're all caught up - new insights will show up here as they come in."
-          />
-        ) : (
-          <StaggerGrid className="flex flex-col gap-3">
-            {insights.map((insight) => (
-              <StaggerItem key={insight.id}>
-                <AttentionCard insight={insight} />
-              </StaggerItem>
-            ))}
-          </StaggerGrid>
-        )}
-      </DashboardSection>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
+        <DashboardSection title="Needs attention">
+          {insightsQuery.isLoading ? (
+            <LoadingSkeleton variant="list" count={3} />
+          ) : insightsQuery.isError ? (
+            <ErrorState
+              heading="Couldn't load insights"
+              description="Something went wrong fetching insights."
+              onRetry={() => insightsQuery.refetch()}
+            />
+          ) : insights.length === 0 ? (
+            <EmptyState
+              heading="Nothing needs attention right now"
+              description="You're all caught up - new insights will show up here as they come in."
+            />
+          ) : (
+            <StaggerGrid className="flex flex-col gap-3">
+              {insights.map((insight) => (
+                <StaggerItem key={insight.id}>
+                  <AttentionCard insight={insight} />
+                </StaggerItem>
+              ))}
+            </StaggerGrid>
+          )}
+        </DashboardSection>
 
-      <DashboardSection
-        title="Request volume"
-        description="Weekly service request volume, company-wide."
-        viewAllHref="/service"
-      >
-        {serviceRequestsQuery.isLoading ? (
-          <LoadingSkeleton variant="list" count={1} />
-        ) : serviceRequestsQuery.isError ? (
-          <ErrorState
-            heading="Couldn't load service requests"
-            description="Something went wrong fetching service requests."
-            onRetry={() => serviceRequestsQuery.refetch()}
-          />
-        ) : serviceRequests.length === 0 ? (
-          <EmptyState
-            heading="No service requests yet"
-            description="Service requests will show up here as dealers and customers submit them."
-          />
-        ) : (
-          <Card>
-            <CardContent className="pt-5">
-              <ServiceTrendChart requests={serviceRequests} />
-            </CardContent>
-          </Card>
-        )}
-      </DashboardSection>
+        <DashboardSection
+          title="Request volume"
+          description="Weekly service request volume, company-wide."
+          viewAllHref="/service"
+        >
+          {serviceRequestsQuery.isLoading ? (
+            <LoadingSkeleton variant="list" count={1} />
+          ) : serviceRequestsQuery.isError ? (
+            <ErrorState
+              heading="Couldn't load service requests"
+              description="Something went wrong fetching service requests."
+              onRetry={() => serviceRequestsQuery.refetch()}
+            />
+          ) : serviceRequests.length === 0 ? (
+            <EmptyState
+              heading="No service requests yet"
+              description="Service requests will show up here as dealers and customers submit them."
+            />
+          ) : (
+            <Card>
+              <CardContent className="pt-5">
+                <ServiceTrendChart requests={serviceRequests} />
+              </CardContent>
+            </Card>
+          )}
+        </DashboardSection>
+      </div>
 
       <DashboardSection
         title="Status breakdown"

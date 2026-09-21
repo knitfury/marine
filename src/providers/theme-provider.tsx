@@ -48,11 +48,11 @@ function readStoredTheme(): Theme | null {
 
 interface ThemeProviderProps {
   children: React.ReactNode;
-  /** Default theme when nothing is stored yet. Defaults to "light". */
+  /** Default theme when nothing is stored yet. Defaults to "dark". */
   defaultTheme?: Theme;
 }
 
-export function ThemeProvider({ children, defaultTheme = "light" }: ThemeProviderProps) {
+export function ThemeProvider({ children, defaultTheme = "dark" }: ThemeProviderProps) {
   const [theme, setThemeState] = React.useState<Theme>(defaultTheme);
 
   // On mount, adopt any previously stored preference.
