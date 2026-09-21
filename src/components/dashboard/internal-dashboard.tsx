@@ -189,89 +189,91 @@ export function InternalDashboard({ user }: InternalDashboardProps) {
           )}
         </DashboardSection>
 
-        <DashboardSection
-          title="Request volume"
-          description="Weekly service request volume, company-wide."
-          viewAllHref="/service"
-        >
-          {serviceRequestsQuery.isLoading ? (
-            <LoadingSkeleton variant="list" count={1} />
-          ) : serviceRequestsQuery.isError ? (
-            <ErrorState
-              heading="Couldn't load service requests"
-              description="Something went wrong fetching service requests."
-              onRetry={() => serviceRequestsQuery.refetch()}
-            />
-          ) : serviceRequests.length === 0 ? (
-            <EmptyState
-              heading="No service requests yet"
-              description="Service requests will show up here as dealers and customers submit them."
-            />
-          ) : (
-            <Card>
-              <CardContent className="pt-5">
-                <ServiceTrendChart requests={serviceRequests} />
-              </CardContent>
-            </Card>
-          )}
-        </DashboardSection>
-      </div>
+        <div className="flex flex-col gap-6">
+          <DashboardSection
+            title="Request volume"
+            description="Weekly service request volume, company-wide."
+            viewAllHref="/service"
+          >
+            {serviceRequestsQuery.isLoading ? (
+              <LoadingSkeleton variant="list" count={1} />
+            ) : serviceRequestsQuery.isError ? (
+              <ErrorState
+                heading="Couldn't load service requests"
+                description="Something went wrong fetching service requests."
+                onRetry={() => serviceRequestsQuery.refetch()}
+              />
+            ) : serviceRequests.length === 0 ? (
+              <EmptyState
+                heading="No service requests yet"
+                description="Service requests will show up here as dealers and customers submit them."
+              />
+            ) : (
+              <Card>
+                <CardContent className="pt-5">
+                  <ServiceTrendChart requests={serviceRequests} />
+                </CardContent>
+              </Card>
+            )}
+          </DashboardSection>
 
-      <DashboardSection
-        title="Status breakdown"
-        description="Service requests and equipment, company-wide."
-        viewAllHref="/service"
-      >
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">By request status</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              {serviceRequestsQuery.isLoading ? (
-                <LoadingSkeleton variant="list" count={1} />
-              ) : serviceRequestsQuery.isError ? (
-                <ErrorState
-                  heading="Couldn't load service requests"
-                  description="Something went wrong fetching service requests."
-                  onRetry={() => serviceRequestsQuery.refetch()}
-                />
-              ) : serviceRequests.length === 0 ? (
-                <EmptyState
-                  heading="No service requests yet"
-                  description="Service requests will show up here as dealers and customers submit them."
-                />
-              ) : (
-                <ServiceStatusChart requests={serviceRequests} />
-              )}
-            </CardContent>
-          </Card>
+          <DashboardSection
+            title="Status breakdown"
+            description="Service requests and equipment, company-wide."
+            viewAllHref="/service"
+          >
+            <div className="flex flex-col gap-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">By request status</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  {serviceRequestsQuery.isLoading ? (
+                    <LoadingSkeleton variant="list" count={1} />
+                  ) : serviceRequestsQuery.isError ? (
+                    <ErrorState
+                      heading="Couldn't load service requests"
+                      description="Something went wrong fetching service requests."
+                      onRetry={() => serviceRequestsQuery.refetch()}
+                    />
+                  ) : serviceRequests.length === 0 ? (
+                    <EmptyState
+                      heading="No service requests yet"
+                      description="Service requests will show up here as dealers and customers submit them."
+                    />
+                  ) : (
+                    <ServiceStatusChart requests={serviceRequests} />
+                  )}
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">By equipment status</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              {equipmentQuery.isLoading ? (
-                <LoadingSkeleton variant="list" count={1} />
-              ) : equipmentQuery.isError ? (
-                <ErrorState
-                  heading="Couldn't load equipment"
-                  description="Something went wrong fetching equipment."
-                  onRetry={() => equipmentQuery.refetch()}
-                />
-              ) : equipment.length === 0 ? (
-                <EmptyState
-                  heading="No equipment yet"
-                  description="Equipment will show up here once it's added."
-                />
-              ) : (
-                <EquipmentStatusChart equipment={equipment} />
-              )}
-            </CardContent>
-          </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">By equipment status</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  {equipmentQuery.isLoading ? (
+                    <LoadingSkeleton variant="list" count={1} />
+                  ) : equipmentQuery.isError ? (
+                    <ErrorState
+                      heading="Couldn't load equipment"
+                      description="Something went wrong fetching equipment."
+                      onRetry={() => equipmentQuery.refetch()}
+                    />
+                  ) : equipment.length === 0 ? (
+                    <EmptyState
+                      heading="No equipment yet"
+                      description="Equipment will show up here once it's added."
+                    />
+                  ) : (
+                    <EquipmentStatusChart equipment={equipment} />
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </DashboardSection>
         </div>
-      </DashboardSection>
+      </div>
 
       <DashboardSection title="Dealers" viewAllHref="/dealers">
         {dealersQuery.isLoading ? (
