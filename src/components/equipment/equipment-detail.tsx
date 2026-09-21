@@ -17,6 +17,7 @@ import {
   ErrorState,
   LoadingSkeleton,
 } from "@/components/shared";
+import { RaiseRequestDialog } from "@/components/service/raise-request-dialog";
 import {
   getCurrentMockUser,
   getCustomerById,
@@ -170,11 +171,21 @@ export function EquipmentDetail({ id }: EquipmentDetailProps) {
         title="Service requests"
         description="Recent requests for this equipment."
         action={
-          serviceRequests.length > 0 ? (
-            <Button asChild variant="link" size="sm" className="h-auto px-0">
-              <Link href={`/service?equipmentId=${id}`}>View all</Link>
-            </Button>
-          ) : undefined
+          <div className="flex items-center gap-3">
+            {serviceRequests.length > 0 && (
+              <Button asChild variant="link" size="sm" className="h-auto px-0">
+                <Link href={`/service?equipmentId=${id}`}>View all</Link>
+              </Button>
+            )}
+            <RaiseRequestDialog
+              defaultEquipmentId={id}
+              trigger={
+                <Button type="button" variant="outline" size="sm">
+                  Raise request for this equipment
+                </Button>
+              }
+            />
+          </div>
         }
       >
         {serviceRequestsQuery.isLoading ? (

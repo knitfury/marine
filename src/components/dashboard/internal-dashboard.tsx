@@ -21,13 +21,15 @@ import {
   StaggerGrid,
   StaggerItem,
 } from "@/components/shared";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardSection } from "@/components/dashboard/dashboard-section";
-import { ServiceStatusSummary } from "@/components/dashboard/service-status-summary";
+import { ServiceStatusChart, ServiceTrendChart, EquipmentStatusChart } from "@/components/dashboard/charts";
 import {
   getDashboardInsights,
   getDashboardSummary,
   getDealers,
   getCustomers,
+  getEquipment,
   getServiceRequests,
 } from "@/lib/mock-api";
 import { formatLongDate } from "@/lib/formatting/date";
@@ -71,11 +73,17 @@ export function InternalDashboard({ user }: InternalDashboardProps) {
     queryFn: () => getCustomers(),
   });
 
+  const equipmentQuery = useQuery({
+    queryKey: ["equipment", "all"],
+    queryFn: () => getEquipment(),
+  });
+
   const summary = summaryQuery.data;
   const insights = insightsQuery.data ?? [];
   const serviceRequests = serviceRequestsQuery.data ?? [];
   const dealers = dealersQuery.data ?? [];
   const customers = customersQuery.data ?? [];
+  const equipment = equipmentQuery.data ?? [];
 
   return (
     <div className="flex flex-col gap-8">
@@ -181,8 +189,8 @@ export function InternalDashboard({ user }: InternalDashboardProps) {
       </DashboardSection>
 
       <DashboardSection
-        title="Service requests by status"
-        description="Every open and closed request, company-wide."
+        title="Request volume"
+        description="Weekly service request volume, company-wide."
         viewAllHref="/service"
       >
         {serviceRequestsQuery.isLoading ? (
@@ -199,8 +207,68 @@ export function InternalDashboard({ user }: InternalDashboardProps) {
             description="Service requests will show up here as dealers and customers submit them."
           />
         ) : (
-          <ServiceStatusSummary requests={serviceRequests} />
+          <Card>
+            <CardContent className="pt-5">
+              <ServiceTrendChart requests={serviceRequests} />
+            </CardContent>
+          </Card>
         )}
+      </DashboardSection>
+
+      <DashboardSection
+        title="Status breakdown"
+        description="Service requests and equipment, company-wide."
+        viewAllHref="/service"
+      >
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">By request status</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              {serviceRequestsQuery.isLoading ? (
+                <LoadingSkeleton variant="list" count={1} />
+              ) : serviceRequestsQuery.isError ? (
+                <ErrorState
+                  heading="Couldn't load service requests"
+                  description="Something went wrong fetching service requests."
+                  onRetry={() => serviceRequestsQuery.refetch()}
+                />
+              ) : serviceRequests.length === 0 ? (
+                <EmptyState
+                  heading="No service requests yet"
+                  description="Service requests will show up here as dealers and customers submit them."
+                />
+              ) : (
+                <ServiceStatusChart requests={serviceRequests} />
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">By equipment status</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              {equipmentQuery.isLoading ? (
+                <LoadingSkeleton variant="list" count={1} />
+              ) : equipmentQuery.isError ? (
+                <ErrorState
+                  heading="Couldn't load equipment"
+                  description="Something went wrong fetching equipment."
+                  onRetry={() => equipmentQuery.refetch()}
+                />
+              ) : equipment.length === 0 ? (
+                <EmptyState
+                  heading="No equipment yet"
+                  description="Equipment will show up here once it's added."
+                />
+              ) : (
+                <EquipmentStatusChart equipment={equipment} />
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </DashboardSection>
 
       <DashboardSection title="Dealers" viewAllHref="/dealers">

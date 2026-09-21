@@ -10,12 +10,12 @@ import {
   RelatedRecordCard,
   StatusBadge,
   PriorityBadge,
-  ConfirmableActionPlaceholder,
   EmptyState,
   ErrorState,
   LoadingSkeleton,
 } from "@/components/shared";
 import { StatusTimeline } from "@/components/service/status-timeline";
+import { ServiceStatusControl } from "@/components/service/service-status-control";
 import {
   getCurrentMockUser,
   getCustomerById,
@@ -117,6 +117,7 @@ export function ServiceDetail({ id }: ServiceDetailProps) {
   const showEquipment = !!equipment && canViewEquipment(user, equipment);
   const showCustomer = !!customer && canViewCustomer(user, customer);
   const showDealer = !!dealer && canViewDealer(user, dealer);
+  const isInternal = user.role === "internal";
 
   return (
     <PageContainer className="flex flex-col gap-6">
@@ -134,15 +135,29 @@ export function ServiceDetail({ id }: ServiceDetailProps) {
       <div className="flex items-start gap-3 rounded-xl border border-info/30 bg-info-subtle px-4 py-3">
         <Info className="mt-0.5 size-5 shrink-0 text-info-subtle-foreground" aria-hidden="true" />
         <div>
-          <p className="text-sm font-semibold text-info-subtle-foreground">This page is read-only</p>
+          <p className="text-sm font-semibold text-info-subtle-foreground">
+            Status changes are saved in this browser
+          </p>
           <p className="mt-0.5 text-sm text-info-subtle-foreground/80">
-            Viewing and tracking service requests is available in this preview. Creating, editing,
-            assigning, or closing requests isn&apos;t available yet.
+            {isInternal
+              ? "Updates you make here are real and persist across reloads. Anyone viewing this request in this same browser sees the change immediately - it isn't synced live to other people's browsers."
+              : "Internal staff manage this request's status. Changes are saved to their browser and this page reflects the latest status on every load."}
           </p>
         </div>
       </div>
 
-      <DetailSection title="Status progress">
+      <DetailSection
+        title="Status progress"
+        action={
+          isInternal ? (
+            <ServiceStatusControl
+              id={request.id}
+              referenceNumber={request.referenceNumber}
+              status={request.status}
+            />
+          ) : undefined
+        }
+      >
         <StatusTimeline status={request.status} />
       </DetailSection>
 
@@ -156,10 +171,7 @@ export function ServiceDetail({ id }: ServiceDetailProps) {
         />
       </DetailSection>
 
-      <DetailSection
-        title="Summary"
-        action={<ConfirmableActionPlaceholder label="Add update" />}
-      >
+      <DetailSection title="Summary">
         <p className="text-sm text-foreground">{request.summary}</p>
       </DetailSection>
 

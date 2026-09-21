@@ -16,8 +16,9 @@ import {
   StaggerGrid,
   StaggerItem,
 } from "@/components/shared";
+import { Card, CardContent } from "@/components/ui/card";
 import { DashboardSection } from "@/components/dashboard/dashboard-section";
-import { ServiceStatusSummary } from "@/components/dashboard/service-status-summary";
+import { ServiceStatusChart } from "@/components/dashboard/charts";
 import {
   getDashboardSummary,
   getDealerById,
@@ -188,7 +189,11 @@ export function DealerDashboard({ user }: DealerDashboardProps) {
             description="Your service requests will show up here once submitted."
           />
         ) : (
-          <ServiceStatusSummary requests={serviceRequests} />
+          <Card>
+            <CardContent className="pt-5">
+              <ServiceStatusChart requests={serviceRequests} />
+            </CardContent>
+          </Card>
         )}
       </DashboardSection>
 

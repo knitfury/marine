@@ -45,7 +45,6 @@ import {
   mockDealers,
   mockEquipment,
   mockInsights,
-  mockServiceRequests,
 } from "@/data";
 import { getMockUserForRole } from "@/data/mock-users";
 import {
@@ -75,6 +74,11 @@ import type {
 } from "@/types";
 import { delay } from "./delay";
 import { getMockApiState, SimulatedNetworkError } from "./mock-state";
+import {
+  addServiceRequestToStore,
+  getServiceRequestsSnapshot,
+  updateServiceRequestInStore,
+} from "./service-request-store";
 
 export { getMockApiState, setMockApiState, resetMockApiState, SimulatedNetworkError } from "./mock-state";
 export type { MockApiState } from "./mock-state";
@@ -98,6 +102,28 @@ function matchesSearch(haystacks: (string | undefined)[], search: string): boole
   return haystacks.some((h) => h?.toLowerCase().includes(needle));
 }
 
+/**
+ * `openServiceRequestCount` on the static Dealer/Customer fixtures
+ * (src/data/mock-dealers.ts, mock-customers.ts) is computed once at
+ * module-load time against the *original* static service-request array -
+ * now that service requests are mutable (see service-request-store.ts),
+ * that baked-in count goes stale the moment a request is created or its
+ * status changes. These helpers recompute it live from the current store
+ * snapshot instead, so every Dealer/Customer this module serves always
+ * reflects reality.
+ */
+function liveOpenServiceRequestCountFor(scope: { dealerId?: string; customerId?: string }): number {
+  const requests = getServiceRequestsSnapshot();
+  return requests.filter((sr) => {
+    const matchesOrg = scope.dealerId ? sr.dealerId === scope.dealerId : sr.customerId === scope.customerId;
+    return matchesOrg && OPEN_SERVICE_REQUEST_STATUSES.includes(sr.status);
+  }).length;
+}
+
+function withLiveOpenCount<T extends Dealer | Customer>(record: T, scope: { dealerId?: string; customerId?: string }): T {
+  return { ...record, openServiceRequestCount: liveOpenServiceRequestCountFor(scope) };
+}
+
 // ---------------------------------------------------------------------------
 // Users
 // ---------------------------------------------------------------------------
@@ -112,11 +138,12 @@ export async function getCurrentMockUser(role: UserRole = "internal"): Promise<U
 // ---------------------------------------------------------------------------
 
 function scopedServiceRequests(role: UserRole, user: User): ServiceRequest[] {
-  if (role === "internal") return mockServiceRequests;
+  const liveRequests = getServiceRequestsSnapshot();
+  if (role === "internal") return liveRequests;
   if (role === "dealer") {
-    return mockServiceRequests.filter((sr) => sr.dealerId === user.organizationId);
+    return liveRequests.filter((sr) => sr.dealerId === user.organizationId);
   }
-  return mockServiceRequests.filter((sr) => sr.customerId === user.organizationId);
+  return liveRequests.filter((sr) => sr.customerId === user.organizationId);
 }
 
 function scopedEquipment(role: UserRole, user: User): Equipment[] {
@@ -236,7 +263,9 @@ export async function getDealers(filters?: DealerFilters): Promise<Dealer[]> {
       );
     }
 
-    return z.array(dealerSchema).parse(results);
+    return z.array(dealerSchema).parse(
+      results.map((d) => withLiveOpenCount(d, { dealerId: d.id }))
+    );
   });
 }
 
@@ -244,7 +273,7 @@ export async function getDealerById(id: string): Promise<Dealer | null> {
   return withMockLatency(() => {
     if (getMockApiState().forceEmpty) return null;
     const found = mockDealers.find((d) => d.id === id);
-    return found ? dealerSchema.parse(found) : null;
+    return found ? dealerSchema.parse(withLiveOpenCount(found, { dealerId: found.id })) : null;
   });
 }
 
@@ -278,7 +307,9 @@ export async function getCustomers(filters?: CustomerFilters): Promise<Customer[
       );
     }
 
-    return z.array(customerSchema).parse(results);
+    return z.array(customerSchema).parse(
+      results.map((c) => withLiveOpenCount(c, { customerId: c.id }))
+    );
   });
 }
 
@@ -286,7 +317,7 @@ export async function getCustomerById(id: string): Promise<Customer | null> {
   return withMockLatency(() => {
     if (getMockApiState().forceEmpty) return null;
     const found = mockCustomers.find((c) => c.id === id);
-    return found ? customerSchema.parse(found) : null;
+    return found ? customerSchema.parse(withLiveOpenCount(found, { customerId: found.id })) : null;
   });
 }
 
@@ -357,7 +388,7 @@ export async function getServiceRequests(
   return withMockLatency(() => {
     if (getMockApiState().forceEmpty) return [];
 
-    let results = mockServiceRequests;
+    let results = getServiceRequestsSnapshot();
     if (filters?.status) {
       results = results.filter((sr) => sr.status === filters.status);
     }
@@ -392,7 +423,96 @@ export async function getServiceRequests(
 export async function getServiceRequestById(id: string): Promise<ServiceRequest | null> {
   return withMockLatency(() => {
     if (getMockApiState().forceEmpty) return null;
-    const found = mockServiceRequests.find((sr) => sr.id === id);
+    const found = getServiceRequestsSnapshot().find((sr) => sr.id === id);
     return found ? serviceRequestSchema.parse(found) : null;
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Service requests - mutations
+// ---------------------------------------------------------------------------
+//
+// These are Phase 2's real, working CRUD: they mutate the persistent store
+// in service-request-store.ts (which mirrors every write to localStorage),
+// not just an in-memory fixture. They go through the same
+// `withMockLatency`/`forceError` seam as every read above, so loading
+// states and simulated-failure dev tooling behave identically for writes.
+
+export interface CreateServiceRequestInput {
+  subject: string;
+  summary: string;
+  priority: ServiceRequestPriority;
+  assignedTeam: string;
+  equipmentId?: string;
+  customerId?: string;
+  dealerId?: string;
+}
+
+/** Picks the next `svc-NNN` id, continuing the static fixture's zero-padded
+ * numbering scheme (svc-001..svc-014) based on the highest id currently in
+ * the store, so seeded and newly-created requests look consistent. */
+function nextServiceRequestId(existing: ServiceRequest[]): string {
+  let max = 0;
+  for (const sr of existing) {
+    const match = /^svc-(\d+)$/.exec(sr.id);
+    if (match) max = Math.max(max, Number(match[1]));
+  }
+  return `svc-${String(max + 1).padStart(3, "0")}`;
+}
+
+/** Picks the next "SR-NNNNNN" reference number, continuing the static
+ * fixture's numbering (e.g. SR-100231) based on the highest reference
+ * number currently in the store. */
+function nextReferenceNumber(existing: ServiceRequest[]): string {
+  let max = 100000;
+  for (const sr of existing) {
+    const match = /^SR-(\d+)$/.exec(sr.referenceNumber);
+    if (match) max = Math.max(max, Number(match[1]));
+  }
+  return `SR-${max + 1}`;
+}
+
+/** Raises a new service request, persisting it to the store. Always starts
+ * as status "new". */
+export async function createServiceRequest(
+  input: CreateServiceRequestInput
+): Promise<ServiceRequest> {
+  return withMockLatency(() => {
+    const existing = getServiceRequestsSnapshot();
+    const now = new Date().toISOString();
+    const record: ServiceRequest = {
+      id: nextServiceRequestId(existing),
+      referenceNumber: nextReferenceNumber(existing),
+      subject: input.subject,
+      status: "new",
+      priority: input.priority,
+      assignedTeam: input.assignedTeam,
+      equipmentId: input.equipmentId,
+      customerId: input.customerId,
+      dealerId: input.dealerId,
+      createdAt: now,
+      updatedAt: now,
+      summary: input.summary,
+    };
+    const validated = serviceRequestSchema.parse(record);
+    return addServiceRequestToStore(validated);
+  });
+}
+
+/** Advances (or closes) a service request's status, persisting the change
+ * to the store. Throws when no request with that id exists. */
+export async function updateServiceRequestStatus(
+  id: string,
+  status: ServiceRequestStatus
+): Promise<ServiceRequest> {
+  return withMockLatency(() => {
+    const updated = updateServiceRequestInStore(id, {
+      status,
+      updatedAt: new Date().toISOString(),
+    });
+    if (!updated) {
+      throw new Error(`Service request "${id}" was not found.`);
+    }
+    return serviceRequestSchema.parse(updated);
   });
 }

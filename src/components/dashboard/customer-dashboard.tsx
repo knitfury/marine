@@ -15,7 +15,9 @@ import {
   StaggerGrid,
   StaggerItem,
 } from "@/components/shared";
+import { Card, CardContent } from "@/components/ui/card";
 import { DashboardSection } from "@/components/dashboard/dashboard-section";
+import { ServiceStatusChart } from "@/components/dashboard/charts";
 import {
   getCustomerById,
   getDashboardSummary,
@@ -120,6 +122,29 @@ export function CustomerDashboard({ user }: CustomerDashboardProps) {
           </StaggerGrid>
         )}
       </section>
+
+      <DashboardSection title="Requests by status">
+        {serviceRequestsQuery.isLoading ? (
+          <LoadingSkeleton variant="list" count={1} />
+        ) : serviceRequestsQuery.isError ? (
+          <ErrorState
+            heading="Couldn't load your service requests"
+            description="Something went wrong fetching your service requests."
+            onRetry={() => serviceRequestsQuery.refetch()}
+          />
+        ) : serviceRequests.length === 0 ? (
+          <EmptyState
+            heading="No service requests yet"
+            description="Your service requests will show up here once submitted."
+          />
+        ) : (
+          <Card>
+            <CardContent className="pt-5">
+              <ServiceStatusChart requests={serviceRequests} />
+            </CardContent>
+          </Card>
+        )}
+      </DashboardSection>
 
       <DashboardSection title="Open service requests" viewAllHref="/service">
         {serviceRequestsQuery.isLoading ? (
