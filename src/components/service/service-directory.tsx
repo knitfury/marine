@@ -185,9 +185,8 @@ export function ServiceDirectory() {
         action={<RaiseRequestButton />}
       />
       <p className="-mt-4 text-xs text-muted-foreground">
-        Raising a request saves it in this browser, so it&apos;s still here after you reload - it
-        isn&apos;t synced to other people&apos;s browsers. Editing, assigning, and reopening a closed
-        request aren&apos;t available yet.
+        Raising a request saves it to the shared backend, so everyone sees it after you submit.
+        Editing, assigning, and reopening a closed request aren&apos;t available yet.
       </p>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">

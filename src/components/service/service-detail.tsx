@@ -136,12 +136,12 @@ export function ServiceDetail({ id }: ServiceDetailProps) {
         <Info className="mt-0.5 size-5 shrink-0 text-info-subtle-foreground" aria-hidden="true" />
         <div>
           <p className="text-sm font-semibold text-info-subtle-foreground">
-            Status changes are saved in this browser
+            Status changes are saved to the shared backend
           </p>
           <p className="mt-0.5 text-sm text-info-subtle-foreground/80">
             {isInternal
-              ? "Updates you make here are real and persist across reloads. Anyone viewing this request in this same browser sees the change immediately - it isn't synced live to other people's browsers."
-              : "Internal staff manage this request's status. Changes are saved to their browser and this page reflects the latest status on every load."}
+              ? "Updates you make here are real and persist across reloads. Anyone viewing this request sees the change on their next load."
+              : "Internal staff manage this request's status. This page reflects the latest status on every load."}
           </p>
         </div>
       </div>

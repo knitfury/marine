@@ -74,11 +74,6 @@ import type {
 } from "@/types";
 import { delay } from "./delay";
 import { getMockApiState, SimulatedNetworkError } from "./mock-state";
-import {
-  addServiceRequestToStore,
-  getServiceRequestsSnapshot,
-  updateServiceRequestInStore,
-} from "./service-request-store";
 
 export { getMockApiState, setMockApiState, resetMockApiState, SimulatedNetworkError } from "./mock-state";
 export type { MockApiState } from "./mock-state";
@@ -86,9 +81,53 @@ export { delay } from "./delay";
 
 const HIGH_PRIORITY: ServiceRequestPriority[] = ["high", "urgent"];
 
-/** Runs the given synchronous computation after the standard mock latency,
- * honoring the dev-only `forceError` state. */
-async function withMockLatency<T>(compute: () => T): Promise<T> {
+/**
+ * Fetches every service request from the real backend
+ * (`src/app/api/service-requests/route.ts`, backed by Catalyst DataStore -
+ * see `src/lib/catalyst/service-requests-table.ts`). A relative URL is
+ * correct here: every call site of the functions in this module runs
+ * client-side, inside TanStack Query hooks in `"use client"` components
+ * (confirmed for all current call sites as of this module's last edit).
+ *
+ * Throws (rather than returning a fallback) on a non-OK response or a
+ * response that fails `serviceRequestSchema` validation, same as every
+ * other read in this module - the UI's existing ErrorState/retry handling
+ * is what's meant to absorb this.
+ */
+async function fetchServiceRequests(): Promise<ServiceRequest[]> {
+  const res = await fetch("/api/service-requests");
+  if (!res.ok) {
+    throw new Error(await extractErrorMessage(res, "Failed to fetch service requests"));
+  }
+  const data: unknown = await res.json();
+  return z.array(serviceRequestSchema).parse(data);
+}
+
+/** Best-effort extraction of the `{ error: string }` body the API routes
+ * return on failure (see src/app/api/service-requests/**), falling back to
+ * a generic message keyed off the HTTP status when the body isn't JSON or
+ * doesn't have that shape. */
+async function extractErrorMessage(res: Response, fallbackPrefix: string): Promise<string> {
+  try {
+    const body: unknown = await res.json();
+    if (body && typeof body === "object" && "error" in body && typeof body.error === "string") {
+      return body.error;
+    }
+  } catch {
+    // Response body wasn't JSON - fall through to the generic message.
+  }
+  return `${fallbackPrefix} (HTTP ${res.status}).`;
+}
+
+/** Runs the given (possibly async) computation after the standard mock
+ * latency, honoring the dev-only `forceError` state. `compute` is allowed
+ * to be async so callers can `await` a real network call (e.g.
+ * `fetchServiceRequests`) through the same latency/forceError seam every
+ * other function in this module already goes through - `forceError` is
+ * checked, and short-circuits with `SimulatedNetworkError`, *before*
+ * `compute` ever runs, so a real network call is never attempted while the
+ * dev toggle is on. */
+async function withMockLatency<T>(compute: () => T | Promise<T>): Promise<T> {
   await delay();
   if (getMockApiState().forceError) {
     throw new SimulatedNetworkError();
@@ -106,22 +145,22 @@ function matchesSearch(haystacks: (string | undefined)[], search: string): boole
  * `openServiceRequestCount` on the static Dealer/Customer fixtures
  * (src/data/mock-dealers.ts, mock-customers.ts) is computed once at
  * module-load time against the *original* static service-request array -
- * now that service requests are mutable (see service-request-store.ts),
- * that baked-in count goes stale the moment a request is created or its
- * status changes. These helpers recompute it live from the current store
- * snapshot instead, so every Dealer/Customer this module serves always
- * reflects reality.
+ * now that service requests are mutable and backed by the real DataStore
+ * table (see fetchServiceRequests above), that baked-in count goes stale
+ * the moment a request is created or its status changes. These helpers
+ * recompute it live from the current backend data instead, so every
+ * Dealer/Customer this module serves always reflects reality.
  */
-function liveOpenServiceRequestCountFor(scope: { dealerId?: string; customerId?: string }): number {
-  const requests = getServiceRequestsSnapshot();
+async function liveOpenServiceRequestCountFor(scope: { dealerId?: string; customerId?: string }): Promise<number> {
+  const requests = await fetchServiceRequests();
   return requests.filter((sr) => {
     const matchesOrg = scope.dealerId ? sr.dealerId === scope.dealerId : sr.customerId === scope.customerId;
     return matchesOrg && OPEN_SERVICE_REQUEST_STATUSES.includes(sr.status);
   }).length;
 }
 
-function withLiveOpenCount<T extends Dealer | Customer>(record: T, scope: { dealerId?: string; customerId?: string }): T {
-  return { ...record, openServiceRequestCount: liveOpenServiceRequestCountFor(scope) };
+async function withLiveOpenCount<T extends Dealer | Customer>(record: T, scope: { dealerId?: string; customerId?: string }): Promise<T> {
+  return { ...record, openServiceRequestCount: await liveOpenServiceRequestCountFor(scope) };
 }
 
 // ---------------------------------------------------------------------------
@@ -137,8 +176,8 @@ export async function getCurrentMockUser(role: UserRole = "internal"): Promise<U
 // Dashboard summary + insights
 // ---------------------------------------------------------------------------
 
-function scopedServiceRequests(role: UserRole, user: User): ServiceRequest[] {
-  const liveRequests = getServiceRequestsSnapshot();
+async function scopedServiceRequests(role: UserRole, user: User): Promise<ServiceRequest[]> {
+  const liveRequests = await fetchServiceRequests();
   if (role === "internal") return liveRequests;
   if (role === "dealer") {
     return liveRequests.filter((sr) => sr.dealerId === user.organizationId);
@@ -162,7 +201,7 @@ export async function getDashboardSummary(
   role: UserRole,
   user: User
 ): Promise<DashboardSummary> {
-  return withMockLatency(() => {
+  return withMockLatency(async () => {
     if (getMockApiState().forceEmpty) {
       return dashboardSummarySchema.parse({
         openServiceRequests: 0,
@@ -174,7 +213,7 @@ export async function getDashboardSummary(
       });
     }
 
-    const requests = scopedServiceRequests(role, user);
+    const requests = await scopedServiceRequests(role, user);
     const equipment = scopedEquipment(role, user);
 
     const activeDealers =
@@ -247,7 +286,7 @@ export interface DealerFilters {
  * data access and applies no role check.
  */
 export async function getDealers(filters?: DealerFilters): Promise<Dealer[]> {
-  return withMockLatency(() => {
+  return withMockLatency(async () => {
     if (getMockApiState().forceEmpty) return [];
 
     let results = mockDealers;
@@ -263,17 +302,19 @@ export async function getDealers(filters?: DealerFilters): Promise<Dealer[]> {
       );
     }
 
-    return z.array(dealerSchema).parse(
+    const withCounts = await Promise.all(
       results.map((d) => withLiveOpenCount(d, { dealerId: d.id }))
     );
+    return z.array(dealerSchema).parse(withCounts);
   });
 }
 
 export async function getDealerById(id: string): Promise<Dealer | null> {
-  return withMockLatency(() => {
+  return withMockLatency(async () => {
     if (getMockApiState().forceEmpty) return null;
     const found = mockDealers.find((d) => d.id === id);
-    return found ? dealerSchema.parse(withLiveOpenCount(found, { dealerId: found.id })) : null;
+    if (!found) return null;
+    return dealerSchema.parse(await withLiveOpenCount(found, { dealerId: found.id }));
   });
 }
 
@@ -288,7 +329,7 @@ export interface CustomerFilters {
 }
 
 export async function getCustomers(filters?: CustomerFilters): Promise<Customer[]> {
-  return withMockLatency(() => {
+  return withMockLatency(async () => {
     if (getMockApiState().forceEmpty) return [];
 
     let results = mockCustomers;
@@ -307,17 +348,19 @@ export async function getCustomers(filters?: CustomerFilters): Promise<Customer[
       );
     }
 
-    return z.array(customerSchema).parse(
+    const withCounts = await Promise.all(
       results.map((c) => withLiveOpenCount(c, { customerId: c.id }))
     );
+    return z.array(customerSchema).parse(withCounts);
   });
 }
 
 export async function getCustomerById(id: string): Promise<Customer | null> {
-  return withMockLatency(() => {
+  return withMockLatency(async () => {
     if (getMockApiState().forceEmpty) return null;
     const found = mockCustomers.find((c) => c.id === id);
-    return found ? customerSchema.parse(withLiveOpenCount(found, { customerId: found.id })) : null;
+    if (!found) return null;
+    return customerSchema.parse(await withLiveOpenCount(found, { customerId: found.id }));
   });
 }
 
@@ -385,10 +428,10 @@ export interface ServiceRequestFilters {
 export async function getServiceRequests(
   filters?: ServiceRequestFilters
 ): Promise<ServiceRequest[]> {
-  return withMockLatency(() => {
+  return withMockLatency(async () => {
     if (getMockApiState().forceEmpty) return [];
 
-    let results = getServiceRequestsSnapshot();
+    let results = await fetchServiceRequests();
     if (filters?.status) {
       results = results.filter((sr) => sr.status === filters.status);
     }
@@ -421,9 +464,9 @@ export async function getServiceRequests(
 }
 
 export async function getServiceRequestById(id: string): Promise<ServiceRequest | null> {
-  return withMockLatency(() => {
+  return withMockLatency(async () => {
     if (getMockApiState().forceEmpty) return null;
-    const found = getServiceRequestsSnapshot().find((sr) => sr.id === id);
+    const found = (await fetchServiceRequests()).find((sr) => sr.id === id);
     return found ? serviceRequestSchema.parse(found) : null;
   });
 }
@@ -432,11 +475,16 @@ export async function getServiceRequestById(id: string): Promise<ServiceRequest 
 // Service requests - mutations
 // ---------------------------------------------------------------------------
 //
-// These are Phase 2's real, working CRUD: they mutate the persistent store
-// in service-request-store.ts (which mirrors every write to localStorage),
-// not just an in-memory fixture. They go through the same
-// `withMockLatency`/`forceError` seam as every read above, so loading
-// states and simulated-failure dev tooling behave identically for writes.
+// These are the app's real, working CRUD: they call the real backend
+// (src/app/api/service-requests/**), backed by a Catalyst DataStore table
+// (src/lib/catalyst/service-requests-table.ts) - not an in-memory fixture
+// or localStorage. Writes are visible to every client, not just the
+// browser that made them. They go through the same `withMockLatency`/
+// `forceError` seam as every read above, so loading states and
+// simulated-failure dev tooling behave identically for writes; `forceError`
+// short-circuits inside `withMockLatency` *before* the network call below
+// ever runs (see that function's doc comment), so the dev toggle works
+// without needing a live backend.
 
 export interface CreateServiceRequestInput {
   subject: string;
@@ -448,71 +496,46 @@ export interface CreateServiceRequestInput {
   dealerId?: string;
 }
 
-/** Picks the next `svc-NNN` id, continuing the static fixture's zero-padded
- * numbering scheme (svc-001..svc-014) based on the highest id currently in
- * the store, so seeded and newly-created requests look consistent. */
-function nextServiceRequestId(existing: ServiceRequest[]): string {
-  let max = 0;
-  for (const sr of existing) {
-    const match = /^svc-(\d+)$/.exec(sr.id);
-    if (match) max = Math.max(max, Number(match[1]));
-  }
-  return `svc-${String(max + 1).padStart(3, "0")}`;
-}
-
-/** Picks the next "SR-NNNNNN" reference number, continuing the static
- * fixture's numbering (e.g. SR-100231) based on the highest reference
- * number currently in the store. */
-function nextReferenceNumber(existing: ServiceRequest[]): string {
-  let max = 100000;
-  for (const sr of existing) {
-    const match = /^SR-(\d+)$/.exec(sr.referenceNumber);
-    if (match) max = Math.max(max, Number(match[1]));
-  }
-  return `SR-${max + 1}`;
-}
-
-/** Raises a new service request, persisting it to the store. Always starts
- * as status "new". */
+/** Raises a new service request via the real API (`POST /api/
+ * service-requests`). Always starts as status "new"; `referenceNumber` is
+ * assigned server-side (see createServiceRequestRow in
+ * src/lib/catalyst/service-requests-table.ts). */
 export async function createServiceRequest(
   input: CreateServiceRequestInput
 ): Promise<ServiceRequest> {
-  return withMockLatency(() => {
-    const existing = getServiceRequestsSnapshot();
-    const now = new Date().toISOString();
-    const record: ServiceRequest = {
-      id: nextServiceRequestId(existing),
-      referenceNumber: nextReferenceNumber(existing),
-      subject: input.subject,
-      status: "new",
-      priority: input.priority,
-      assignedTeam: input.assignedTeam,
-      equipmentId: input.equipmentId,
-      customerId: input.customerId,
-      dealerId: input.dealerId,
-      createdAt: now,
-      updatedAt: now,
-      summary: input.summary,
-    };
-    const validated = serviceRequestSchema.parse(record);
-    return addServiceRequestToStore(validated);
+  return withMockLatency(async () => {
+    const res = await fetch("/api/service-requests", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+    if (!res.ok) {
+      throw new Error(await extractErrorMessage(res, "Failed to create service request"));
+    }
+    const data: unknown = await res.json();
+    return serviceRequestSchema.parse(data);
   });
 }
 
-/** Advances (or closes) a service request's status, persisting the change
- * to the store. Throws when no request with that id exists. */
+/** Advances (or closes) a service request's status via the real API
+ * (`PATCH /api/service-requests/:rowId`). Throws when no request with that
+ * id exists. */
 export async function updateServiceRequestStatus(
   id: string,
   status: ServiceRequestStatus
 ): Promise<ServiceRequest> {
-  return withMockLatency(() => {
-    const updated = updateServiceRequestInStore(id, {
-      status,
-      updatedAt: new Date().toISOString(),
+  return withMockLatency(async () => {
+    const res = await fetch(`/api/service-requests/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
     });
-    if (!updated) {
-      throw new Error(`Service request "${id}" was not found.`);
+    if (!res.ok) {
+      throw new Error(
+        await extractErrorMessage(res, `Failed to update service request "${id}"`)
+      );
     }
-    return serviceRequestSchema.parse(updated);
+    const data: unknown = await res.json();
+    return serviceRequestSchema.parse(data);
   });
 }

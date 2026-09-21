@@ -50,3 +50,20 @@ export const createServiceRequestSchema = z.object({
 });
 
 export type CreateServiceRequestFormValues = z.infer<typeof createServiceRequestSchema>;
+
+/**
+ * Validates the full `POST /api/service-requests` request body, i.e. the
+ * mock-api layer's `CreateServiceRequestInput` shape (src/lib/mock-api/
+ * index.ts) sent over the wire by `createServiceRequest`. Extends the
+ * form-level `createServiceRequestSchema` above with `customerId`/
+ * `dealerId` - deliberately absent from the form schema (they're never
+ * entered directly, see that schema's docstring) but present once the
+ * client has resolved them from the current user/equipment, and required
+ * by the server to attribute the row to the right org.
+ */
+export const createServiceRequestPayloadSchema = createServiceRequestSchema.extend({
+  customerId: z.string().min(1).optional(),
+  dealerId: z.string().min(1).optional(),
+});
+
+export type CreateServiceRequestPayload = z.infer<typeof createServiceRequestPayloadSchema>;

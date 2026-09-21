@@ -65,8 +65,9 @@ export interface RaiseRequestDialogProps {
  * "Raise a service request" form, available to every role - internal staff
  * as well as dealer/customer users raising a request for their own
  * equipment. Creates a real record via `createServiceRequest`, persisted to
- * localStorage (see src/lib/mock-api/service-request-store.ts), not just an
- * in-memory fixture.
+ * the real backend (Catalyst DataStore, via `src/app/api/service-requests`
+ * and `src/lib/catalyst/service-requests-table.ts`), not just an in-memory
+ * fixture or this browser's localStorage.
  *
  * `customerId`/`dealerId` are never asked for directly - they're inferred
  * from the current user's role/organization (or, for internal users, from
@@ -184,8 +185,8 @@ export function RaiseRequestDialog({ trigger, defaultEquipmentId }: RaiseRequest
         <DialogHeader>
           <DialogTitle>Raise a service request</DialogTitle>
           <DialogDescription>
-            This creates a real request, saved in this browser - it will still be here after you
-            reload the page, but it isn&apos;t synced to other people&apos;s browsers.
+            This creates a real request. It&apos;s saved to the shared backend, so it will still
+            be here after you reload the page - and everyone else will see it too.
           </DialogDescription>
         </DialogHeader>
 

@@ -30,7 +30,8 @@ export interface ServiceStatusControlProps {
  * (SERVICE_REQUEST_STATUSES), plus a distinct "Close request" action that
  * jumps straight to "closed" regardless of the current step. Replaces the
  * old `ConfirmableActionPlaceholder` "Add update" stand-in - this actually
- * writes through `updateServiceRequestStatus`, persisted to localStorage.
+ * writes through `updateServiceRequestStatus`, persisted to the real
+ * backend (Catalyst DataStore).
  *
  * Once a request is closed it can't be reopened in this phase - the
  * control hides itself and shows a plain "closed" note instead.
