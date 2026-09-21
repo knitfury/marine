@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   ClipboardText,
@@ -9,6 +10,8 @@ import {
   UsersThree,
   Wrench,
   Gear,
+  Timer,
+  Target,
 } from "@phosphor-icons/react";
 import {
   PageHeader,
@@ -30,6 +33,17 @@ import {
   RevenueTrendChart,
   EquipmentStatusChart,
 } from "@/components/dashboard/charts";
+import { TrendMetricCard } from "@/components/dashboard/trend-metric-card";
+import { SegmentedBar, TONE_BG_CLASS } from "@/components/dashboard/segmented-bar";
+import { CategoryBarList } from "@/components/dashboard/category-bar-list";
+import {
+  computeOpenRequestsTrend,
+  computeResolutionTimeTrend,
+  computeSlaComplianceTrend,
+  computeRepeatServiceRate,
+  aggregateOpenRequestsByPriority,
+  aggregateEquipmentCategoryBreakdown,
+} from "@/lib/analytics/service-metrics";
 import {
   getDashboardInsights,
   getDashboardSummary,
@@ -40,6 +54,7 @@ import {
 } from "@/lib/mock-api";
 import { formatLongDate } from "@/lib/formatting/date";
 import { formatCurrency } from "@/lib/formatting";
+import { cn } from "@/lib/utils";
 import type { User } from "@/types";
 
 const RECENT_PREVIEW_COUNT = 4;
@@ -87,10 +102,101 @@ export function InternalDashboard({ user }: InternalDashboardProps) {
 
   const summary = summaryQuery.data;
   const insights = insightsQuery.data ?? [];
-  const serviceRequests = serviceRequestsQuery.data ?? [];
+  // Memoized (rather than a plain `?? []`) so the analytics useMemos below
+  // - which take this as a dependency - don't recompute on every render
+  // while the query is loading (each `?? []` would otherwise be a fresh
+  // array reference every render).
+  const serviceRequests = useMemo(() => serviceRequestsQuery.data ?? [], [serviceRequestsQuery.data]);
   const dealers = dealersQuery.data ?? [];
   const customers = customersQuery.data ?? [];
-  const equipment = equipmentQuery.data ?? [];
+  const equipment = useMemo(() => equipmentQuery.data ?? [], [equipmentQuery.data]);
+
+  const openTrend = useMemo(() => computeOpenRequestsTrend(serviceRequests), [serviceRequests]);
+  const resolutionTrend = useMemo(
+    () => computeResolutionTimeTrend(serviceRequests),
+    [serviceRequests]
+  );
+  const slaTrend = useMemo(() => computeSlaComplianceTrend(serviceRequests), [serviceRequests]);
+  const priorityBreakdown = useMemo(
+    () => aggregateOpenRequestsByPriority(serviceRequests),
+    [serviceRequests]
+  );
+  const repeatService = useMemo(() => computeRepeatServiceRate(serviceRequests), [serviceRequests]);
+  const categoryBreakdown = useMemo(
+    () => aggregateEquipmentCategoryBreakdown(serviceRequests, equipment),
+    [serviceRequests, equipment]
+  );
+
+  // Open requests: more opened this month is attention-worthy (not
+  // necessarily bad), fewer is a clear win.
+  const openDeltaLabel =
+    openTrend.deltaPct === null
+      ? "Not enough data yet"
+      : `${openTrend.deltaPct >= 0 ? "+" : ""}${Math.round(openTrend.deltaPct)}% vs last month`;
+  const openDeltaTone =
+    openTrend.deltaPct === null || openTrend.deltaPct === 0
+      ? "neutral"
+      : openTrend.deltaPct > 0
+        ? "warning"
+        : "success";
+  const openDeltaDirection =
+    openTrend.deltaPct === null || openTrend.deltaPct === 0
+      ? undefined
+      : openTrend.deltaPct > 0
+        ? "up"
+        : "down";
+
+  // Avg time to resolution: lower is faster (good), higher is slower (bad).
+  const resolutionValue =
+    resolutionTrend.avgDaysThisPeriod === null
+      ? "—"
+      : `${resolutionTrend.avgDaysThisPeriod.toFixed(1)} days avg`;
+  const resolutionDeltaLabel =
+    resolutionTrend.deltaPct === null
+      ? "Not enough data yet"
+      : `${Math.abs(Math.round(resolutionTrend.deltaPct))}% ${
+          resolutionTrend.deltaPct < 0 ? "faster" : "slower"
+        } than last month`;
+  const resolutionDeltaTone =
+    resolutionTrend.deltaPct === null || resolutionTrend.deltaPct === 0
+      ? "neutral"
+      : resolutionTrend.deltaPct < 0
+        ? "success"
+        : "danger";
+  const resolutionDeltaDirection =
+    resolutionTrend.deltaPct === null || resolutionTrend.deltaPct === 0
+      ? undefined
+      : resolutionTrend.deltaPct > 0
+        ? "up"
+        : "down";
+
+  // SLA compliance: higher percentage met is good, lower is bad.
+  const slaValue = slaTrend.pctThisPeriod === null ? "—" : `${Math.round(slaTrend.pctThisPeriod)}%`;
+  const slaDeltaLabel =
+    slaTrend.deltaPoints === null
+      ? "Not enough data yet"
+      : `${slaTrend.deltaPoints >= 0 ? "+" : "-"}${Math.abs(Math.round(slaTrend.deltaPoints))} pts vs last month`;
+  const slaDeltaTone =
+    slaTrend.deltaPoints === null || slaTrend.deltaPoints === 0
+      ? "neutral"
+      : slaTrend.deltaPoints > 0
+        ? "success"
+        : "danger";
+  const slaDeltaDirection =
+    slaTrend.deltaPoints === null || slaTrend.deltaPoints === 0
+      ? undefined
+      : slaTrend.deltaPoints > 0
+        ? "up"
+        : "down";
+  const slaCaption = `${slaTrend.metCount} of ${slaTrend.totalCount} closures · urgent 24h · high 48h · medium 5d · low 10d`;
+
+  const categoryBarListEntries = categoryBreakdown.map((entry) => ({
+    key: entry.category,
+    label: entry.category,
+    primaryValue: entry.requestCount,
+    primaryUnitLabel: entry.requestCount === 1 ? "request" : "requests",
+    secondaryLabel: `${entry.unitCount} unit${entry.unitCount === 1 ? "" : "s"} fielded`,
+  }));
 
   return (
     <div className="flex flex-col gap-8">
@@ -179,6 +285,58 @@ export function InternalDashboard({ user }: InternalDashboardProps) {
           </StaggerGrid>
         )}
       </section>
+
+      <DashboardSection
+        title="Service performance"
+        description="Measured this month, against the same point last month."
+      >
+        {serviceRequestsQuery.isLoading ? (
+          <LoadingSkeleton variant="list" count={1} />
+        ) : serviceRequestsQuery.isError ? (
+          <ErrorState
+            heading="Couldn't load service performance"
+            description="Something went wrong fetching service requests."
+            onRetry={() => serviceRequestsQuery.refetch()}
+          />
+        ) : (
+          <StaggerGrid className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <StaggerItem>
+              <TrendMetricCard
+                label="Open requests"
+                value={String(openTrend.openNow)}
+                icon={ClipboardText}
+                deltaLabel={openDeltaLabel}
+                deltaTone={openDeltaTone}
+                deltaDirection={openDeltaDirection}
+                sparklineValues={openTrend.weeklySparkline}
+              />
+            </StaggerItem>
+            <StaggerItem>
+              <TrendMetricCard
+                label="Avg time to resolution"
+                value={resolutionValue}
+                icon={Timer}
+                deltaLabel={resolutionDeltaLabel}
+                deltaTone={resolutionDeltaTone}
+                deltaDirection={resolutionDeltaDirection}
+                sparklineValues={resolutionTrend.weeklySparkline}
+              />
+            </StaggerItem>
+            <StaggerItem>
+              <TrendMetricCard
+                label="SLA compliance"
+                value={slaValue}
+                icon={Target}
+                deltaLabel={slaDeltaLabel}
+                deltaTone={slaDeltaTone}
+                deltaDirection={slaDeltaDirection}
+                caption={slaCaption}
+                sparklineValues={slaTrend.weeklySparkline}
+              />
+            </StaggerItem>
+          </StaggerGrid>
+        )}
+      </DashboardSection>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
         <DashboardSection title="Needs attention">
@@ -318,6 +476,109 @@ export function InternalDashboard({ user }: InternalDashboardProps) {
           </DashboardSection>
         </div>
       </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <DashboardSection
+          title="Open work by priority"
+          description="Where the current queue is weighted, company-wide."
+        >
+          {serviceRequestsQuery.isLoading ? (
+            <LoadingSkeleton variant="list" count={1} />
+          ) : serviceRequestsQuery.isError ? (
+            <ErrorState
+              heading="Couldn't load open work by priority"
+              description="Something went wrong fetching service requests."
+              onRetry={() => serviceRequestsQuery.refetch()}
+            />
+          ) : openTrend.openNow === 0 ? (
+            <EmptyState
+              heading="No open work right now"
+              description="Open service requests will be weighted by priority here as they come in."
+            />
+          ) : (
+            <Card>
+              <CardContent className="flex flex-col gap-4 pt-5">
+                <SegmentedBar segments={priorityBreakdown} />
+                <ul className="flex flex-col gap-2">
+                  {priorityBreakdown.map((entry) => (
+                    <li key={entry.key} className="flex items-center gap-2 text-sm">
+                      <span
+                        aria-hidden="true"
+                        className={cn("size-2 shrink-0 rounded-full", TONE_BG_CLASS[entry.tone])}
+                      />
+                      <span className="text-foreground">{entry.label}</span>
+                      <span className="ml-auto font-semibold tabular-nums text-foreground">
+                        {entry.count}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
+        </DashboardSection>
+
+        <DashboardSection
+          title="Repeat service"
+          description="Equipment units serviced more than once within 90 days."
+        >
+          {serviceRequestsQuery.isLoading ? (
+            <LoadingSkeleton variant="list" count={1} />
+          ) : serviceRequestsQuery.isError ? (
+            <ErrorState
+              heading="Couldn't load repeat service rate"
+              description="Something went wrong fetching service requests."
+              onRetry={() => serviceRequestsQuery.refetch()}
+            />
+          ) : repeatService.totalUnitCount === 0 ? (
+            <EmptyState
+              heading="No serviced equipment yet"
+              description="Once requests are linked to equipment, the repeat-service rate will show up here."
+            />
+          ) : (
+            <Card>
+              <CardContent className="flex flex-col gap-2 pt-5">
+                <span className="text-3xl font-semibold tracking-tight text-foreground">
+                  {Math.round(repeatService.pct ?? 0)}%
+                </span>
+                <p className="text-sm text-muted-foreground">
+                  {repeatService.repeatUnitCount} of {repeatService.totalUnitCount} serviced units
+                  needed a second visit.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </DashboardSection>
+      </div>
+
+      <DashboardSection
+        title="Equipment category breakdown"
+        description="Service volume and units fielded by equipment type, company-wide."
+      >
+        {serviceRequestsQuery.isLoading || equipmentQuery.isLoading ? (
+          <LoadingSkeleton variant="list" count={1} />
+        ) : serviceRequestsQuery.isError || equipmentQuery.isError ? (
+          <ErrorState
+            heading="Couldn't load equipment category breakdown"
+            description="Something went wrong fetching service requests or equipment."
+            onRetry={() => {
+              serviceRequestsQuery.refetch();
+              equipmentQuery.refetch();
+            }}
+          />
+        ) : equipment.length === 0 ? (
+          <EmptyState
+            heading="No equipment yet"
+            description="Equipment will show up here once it's added."
+          />
+        ) : (
+          <Card>
+            <CardContent className="pt-5">
+              <CategoryBarList entries={categoryBarListEntries} />
+            </CardContent>
+          </Card>
+        )}
+      </DashboardSection>
 
       <DashboardSection title="Dealers" viewAllHref="/dealers">
         {dealersQuery.isLoading ? (
