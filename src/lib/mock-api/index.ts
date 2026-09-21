@@ -517,6 +517,32 @@ export async function createServiceRequest(
   });
 }
 
+/** One-time sample-data loader for a freshly created (empty) DataStore
+ * table, via the real API (`POST /api/service-requests/seed`) - see
+ * src/lib/catalyst/service-requests-table.ts's seedServiceRequestsIfEmpty
+ * for the no-op-if-not-empty guard and the CREATEDTIME caveat. Surfaced by
+ * the "Load sample data" button in service-directory.tsx. */
+export async function seedSampleServiceRequests(): Promise<{
+  seeded: boolean;
+  insertedCount: number;
+  existingCount: number;
+}> {
+  return withMockLatency(async () => {
+    const res = await fetch("/api/service-requests/seed", { method: "POST" });
+    if (!res.ok) {
+      throw new Error(await extractErrorMessage(res, "Failed to load sample data"));
+    }
+    const data: unknown = await res.json();
+    return z
+      .object({
+        seeded: z.boolean(),
+        insertedCount: z.number(),
+        existingCount: z.number(),
+      })
+      .parse(data);
+  });
+}
+
 /** Advances (or closes) a service request's status via the real API
  * (`PATCH /api/service-requests/:rowId`). Throws when no request with that
  * id exists. */

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useSearchParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   PageHeader,
   SearchInput,
@@ -12,6 +12,7 @@ import {
   LoadingSkeleton,
   type FilterDef,
 } from "@/components/shared";
+import { Button } from "@/components/ui/button";
 import { ServiceRequestListRow } from "@/components/service/service-request-list-row";
 import { RaiseRequestButton } from "@/components/service/raise-request-dialog";
 import {
@@ -20,8 +21,11 @@ import {
   getDealers,
   getEquipment,
   getServiceRequests,
+  seedSampleServiceRequests,
   type ServiceRequestFilters,
 } from "@/lib/mock-api";
+import { invalidateServiceRequestRelatedQueries } from "@/lib/query-invalidation";
+import { toast } from "@/hooks/use-toast";
 import { formatServiceRequestPriority, formatServiceRequestStatus } from "@/lib/formatting/status";
 import { SERVICE_REQUEST_PRIORITIES, SERVICE_REQUEST_STATUSES } from "@/lib/constants/status";
 import { useRoleStore } from "@/stores/role-store";
@@ -51,6 +55,7 @@ function resolveOrgScope(
 
 export function ServiceDirectory() {
   const role = useRoleStore((state) => state.role);
+  const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const urlCustomerId = searchParams.get("customerId");
   const urlDealerId = searchParams.get("dealerId");
@@ -172,6 +177,39 @@ export function ServiceDirectory() {
   const hasActiveFilters = !!(search || status || priority || assignedTeam);
   const requests = requestsQuery.data ?? [];
 
+  // Lets internal staff populate a freshly created (empty) DataStore table
+  // with sample requests, so the dashboard charts have something to show
+  // before any real request has been raised. No-ops once the table has any
+  // rows (seeded or real) - see seedServiceRequestsIfEmpty's doc comment
+  // for the CREATEDTIME caveat this carries.
+  const seedMutation = useMutation({
+    mutationFn: () => seedSampleServiceRequests(),
+    onSuccess: async (result) => {
+      if (result.seeded) {
+        toast({
+          title: "Sample data loaded",
+          description: `Added ${result.insertedCount} sample service requests.`,
+          variant: "success",
+        });
+        await invalidateServiceRequestRelatedQueries(queryClient);
+      } else {
+        toast({
+          title: "Nothing to load",
+          description: "This table already has service requests on it.",
+        });
+      }
+    },
+    onError: (error) => {
+      toast({
+        title: "Couldn't load sample data",
+        description:
+          error instanceof Error ? error.message : "Something went wrong. Please try again.",
+        variant: "danger",
+      });
+    },
+  });
+  const canSeedSampleData = isInternal && !hasActiveFilters;
+
   const description =
     user?.role === "internal"
       ? "All service requests across every dealer and customer."
@@ -220,6 +258,18 @@ export function ServiceDirectory() {
               : user?.role === "internal"
                 ? "Service requests will show up here as they're logged."
                 : "You have no service requests on file yet."
+          }
+          action={
+            canSeedSampleData ? (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => seedMutation.mutate()}
+                disabled={seedMutation.isPending}
+              >
+                {seedMutation.isPending ? "Loading sample data..." : "Load sample data"}
+              </Button>
+            ) : undefined
           }
         />
       ) : (

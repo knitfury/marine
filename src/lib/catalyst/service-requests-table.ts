@@ -37,7 +37,7 @@
 import type { CatalystApp } from "zcatalyst-sdk-node/lib/catalyst-app";
 import type { ICatalystRow } from "zcatalyst-sdk-node/lib/utils/pojo/common";
 import { serviceRequestSchema } from "@/schemas";
-import type { ServiceRequest, ServiceRequestStatus } from "@/types";
+import type { ServiceRequest, ServiceRequestPriority, ServiceRequestStatus } from "@/types";
 import type { CreateServiceRequestInput } from "@/lib/mock-api";
 
 const TABLE_NAME = "ServiceRequests";
@@ -180,6 +180,65 @@ export async function createServiceRequestRow(
   });
 
   return serviceRequestSchema.parse(rowToServiceRequest(insertedRow));
+}
+
+export interface SeedServiceRequestInput {
+  referenceNumber: string;
+  subject: string;
+  summary: string;
+  status: ServiceRequestStatus;
+  priority: ServiceRequestPriority;
+  assignedTeam: string;
+  equipmentId?: string;
+  customerId?: string;
+  dealerId?: string;
+}
+
+/**
+ * One-time bulk seed, used by `POST /api/service-requests/seed` to give a
+ * freshly created (empty) table sample rows so the dashboard charts have
+ * something to show. Unlike `createServiceRequestRow`, this accepts an
+ * explicit `status` per row (seed fixtures cover every status on purpose,
+ * to fill out the status-breakdown chart) rather than forcing "new".
+ *
+ * Guarded by a row-count check so repeat calls (e.g. clicking the "Load
+ * sample data" button twice) never duplicate rows - it's a no-op once the
+ * table has *any* rows, seeded or real.
+ *
+ * CAVEAT: `CREATEDTIME`/`MODIFIEDTIME` are Catalyst system columns the SDK
+ * doesn't let a write override - every seeded row gets "now" as its
+ * created/modified time, not the varied historical dates the original
+ * fixture data (src/data/mock-service-requests.ts) was authored with. The
+ * status/priority/team/equipment breakdown charts are unaffected (they
+ * don't depend on time), but the weekly request-volume trend chart will
+ * show all seeded rows landing in the current week rather than spread
+ * across the last few months.
+ */
+export async function seedServiceRequestsIfEmpty(
+  app: CatalystApp,
+  fixtures: SeedServiceRequestInput[]
+): Promise<{ seeded: boolean; insertedCount: number; existingCount: number }> {
+  const existing = await listServiceRequests(app);
+  if (existing.length > 0) {
+    return { seeded: false, insertedCount: 0, existingCount: existing.length };
+  }
+
+  const table = app.datastore().table(TABLE_NAME);
+  await table.insertRows(
+    fixtures.map((f) => ({
+      referenceNumber: f.referenceNumber,
+      subject: f.subject,
+      summary: f.summary,
+      status: f.status,
+      requestPriority: f.priority,
+      assignedTeam: f.assignedTeam,
+      equipmentId: f.equipmentId ?? null,
+      customerId: f.customerId ?? null,
+      dealerId: f.dealerId ?? null,
+    }))
+  );
+
+  return { seeded: true, insertedCount: fixtures.length, existingCount: 0 };
 }
 
 /**
