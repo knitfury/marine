@@ -8,6 +8,7 @@ import { PageTransition } from "@/components/shared/page-transition";
 import { ResponsiveSidebar } from "@/components/layout/responsive-sidebar";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { TopBar } from "@/components/layout/top-bar";
+import { ChatbotLauncher } from "@/components/chatbot/chatbot-launcher";
 import { useRoleStore } from "@/stores/role-store";
 import { getCurrentMockUser } from "@/lib/mock-api";
 
@@ -47,6 +48,7 @@ export function AppShell({ children }: AppShellProps) {
       </div>
 
       <Toaster />
+      <ChatbotLauncher />
     </TooltipProvider>
   );
 }
