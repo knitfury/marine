@@ -6,4 +6,3 @@ export * from "./role-switcher";
 export * from "./theme-toggle";
 export * from "./user-menu";
 export * from "./page-container";
-export * from "./demo-mode-banner";

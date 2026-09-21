@@ -8,7 +8,6 @@ import { PageTransition } from "@/components/shared/page-transition";
 import { ResponsiveSidebar } from "@/components/layout/responsive-sidebar";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { TopBar } from "@/components/layout/top-bar";
-import { DemoModeBanner } from "@/components/layout/demo-mode-banner";
 import { useRoleStore } from "@/stores/role-store";
 import { getCurrentMockUser } from "@/lib/mock-api";
 
@@ -38,7 +37,6 @@ export function AppShell({ children }: AppShellProps) {
 
         <div className="flex min-w-0 flex-1 flex-col">
           <TopBar role={role} user={user} isUserLoading={isUserLoading} />
-          <DemoModeBanner />
 
           <main className="flex-1 pb-20 lg:pb-0">
             <PageTransition>{children}</PageTransition>
